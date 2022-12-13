@@ -87,8 +87,8 @@ import           Cardano.Slotting.Slot (EpochNo)
 
 import           Cardano.Ledger.BaseTypes (strictMaybeToMaybe)
 import qualified Cardano.Ledger.BaseTypes as Ledger
-import           Cardano.Ledger.Crypto (StandardCrypto)
 import qualified Cardano.Ledger.Core as Ledger
+import           Cardano.Ledger.Crypto (StandardCrypto)
 import qualified Cardano.Ledger.Keys as Ledger
 
 -- Some of the things from Cardano.Ledger.ShelleyPParams are generic across all
@@ -99,9 +99,9 @@ import           Cardano.Ledger.Shelley.PParams (ShelleyPParams, ShelleyPParamsH
                    ShelleyPParamsUpdate)
 
 import qualified Cardano.Ledger.Alonzo.Language as Alonzo
-import qualified Cardano.Ledger.Alonzo.Scripts as Alonzo
 import           Cardano.Ledger.Alonzo.PParams (AlonzoPParams, AlonzoPParamsHKD (..),
                    AlonzoPParamsUpdate)
+import qualified Cardano.Ledger.Alonzo.Scripts as Alonzo
 
 import           Cardano.Ledger.Babbage.PParams (BabbagePParams, BabbagePParamsHKD (..),
                    BabbagePParamsUpdate)
@@ -850,7 +850,7 @@ instance HasTypeProxy UpdateProposal where
     proxyToAsType _ = AsUpdateProposal
 
 instance HasTextEnvelope UpdateProposal where
-    textEnvelopeType _ = "UpdateProposalShelley"
+    textEnvelopeType _ = ["UpdateProposalShelley"]
 
 instance ToCBOR UpdateProposal where
     toCBOR (UpdateProposal ppup epochno) =
