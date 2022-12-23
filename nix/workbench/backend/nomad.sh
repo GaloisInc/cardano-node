@@ -30,6 +30,10 @@ case "$op" in
         local usage="USAGE: wb nomad $op PROFILE-DIR"
         local profile_dir=${1:?$usage}
 
+        # TODO: stateful nomad ?
+        # https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
+        # ${XDG_STATE_HOME:-$HOME/.local/state}
+
         # The one provided by the profile, the one used may suffer changes (jq).
         setenvjqstr 'nomad_job_file' "$profile_dir"/nomad-job.json
         # Get the job name from the job's JSON description.
