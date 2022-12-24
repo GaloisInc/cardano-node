@@ -34,6 +34,7 @@ module Cardano.Logging.Trace (
   , mkInnerNamespace
   , nsReplacePrefix
   , nsReplaceInner
+  , nsCast
   , nsPrependInner
   , nsGetPrefix
   , nsGetInner
@@ -394,6 +395,8 @@ nsReplaceInner (Namespace o _) =  Namespace o
 nsPrependInner :: Text -> Namespace a -> Namespace b
 nsPrependInner t (Namespace o i) =  Namespace o (t : i)
 
+nsCast :: Namespace a -> Namespace b
+nsCast (Namespace o i) =  Namespace o i
 
 nsGetInner :: Namespace a -> [Text]
 nsGetInner = nsInner
