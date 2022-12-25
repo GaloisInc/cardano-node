@@ -155,10 +155,10 @@ instance MetaTrace  (ChainDB.TraceEvent blk) where
     nsPrependInner "LedgerEvent" (namespaceFor ev)
   namespaceFor (ChainDB.TraceLedgerReplayEvent ev) =
      nsPrependInner "LedgerReplay" (namespaceFor ev)
-  -- namespaceFor (ChainDB.TraceImmutableDBEvent ev) =
-  --   nsPrependInner "ImmDbEvent" (namespaceFor ev)
-  -- namespaceFor (ChainDB.TraceVolatileDBEvent ev) =
-  --   nsPrependInner "VolatileDbEvent" (namespaceFor ev)
+  namespaceFor (ChainDB.TraceImmutableDBEvent ev) =
+    nsPrependInner "ImmDbEvent" (namespaceFor ev)
+  namespaceFor (ChainDB.TraceVolatileDBEvent ev) =
+     nsPrependInner "VolatileDbEvent" (namespaceFor ev)
 
   severityFor (Namespace out ("AddBlockEvent" : tl)) (Just (ChainDB.TraceAddBlockEvent ev')) =
     severityFor (Namespace out tl) (Just ev')
@@ -192,7 +192,18 @@ instance MetaTrace  (ChainDB.TraceEvent blk) where
     severityFor (Namespace out tl) (Just ev')
   severityFor (Namespace out ("LedgerEvent" : tl)) Nothing =
     severityFor (Namespace out tl :: Namespace (LedgerDB.TraceEvent blk)) Nothing
-
+  severityFor (Namespace out ("LedgerReplayEvent" : tl)) (Just (ChainDB.TraceLedgerReplayEvent ev')) =
+    severityFor (Namespace out tl) (Just ev')
+  severityFor (Namespace out ("LedgerReplayEvent" : tl)) Nothing =
+    severityFor (Namespace out tl :: Namespace (LedgerDB.TraceReplayEvent blk)) Nothing
+  severityFor (Namespace out ("ImmDbEvent" : tl)) (Just (ChainDB.TraceImmutableDBEvent ev')) =
+    severityFor (Namespace out tl) (Just ev')
+  severityFor (Namespace out ("ImmDbEvent" : tl)) Nothing =
+    severityFor (Namespace out tl :: Namespace (ImmDB.TraceEvent blk)) Nothing
+  severityFor (Namespace out ("VolatileDbEvent" : tl)) (Just (ChainDB.TraceVolatileDBEvent ev')) =
+    severityFor (Namespace out tl) (Just ev')
+  severityFor (Namespace out ("VolatileDbEvent" : tl)) Nothing =
+    severityFor (Namespace out tl :: Namespace (VolDB.TraceEvent blk)) Nothing
   severityFor _ns _ = Nothing
 
   privacyFor (Namespace out ("AddBlockEvent" : tl)) (Just (ChainDB.TraceAddBlockEvent ev')) =
@@ -227,7 +238,18 @@ instance MetaTrace  (ChainDB.TraceEvent blk) where
     privacyFor (Namespace out tl) (Just ev')
   privacyFor (Namespace out ("LedgerEvent" : tl)) Nothing =
     privacyFor (Namespace out tl :: Namespace ((LedgerDB.TraceEvent blk))) Nothing
-
+  privacyFor (Namespace out ("LedgerReplayEvent" : tl)) (Just (ChainDB.TraceLedgerReplayEvent ev')) =
+    privacyFor (Namespace out tl) (Just ev')
+  privacyFor (Namespace out ("LedgerReplayEvent" : tl)) Nothing =
+    privacyFor (Namespace out tl :: Namespace (LedgerDB.TraceReplayEvent blk)) Nothing
+  privacyFor (Namespace out ("ImmDbEvent" : tl)) (Just (ChainDB.TraceImmutableDBEvent ev')) =
+    privacyFor (Namespace out tl) (Just ev')
+  privacyFor (Namespace out ("ImmDbEvent" : tl)) Nothing =
+    privacyFor (Namespace out tl :: Namespace (ImmDB.TraceEvent blk)) Nothing
+  privacyFor (Namespace out ("VolatileDbEvent" : tl)) (Just (ChainDB.TraceVolatileDBEvent ev')) =
+    privacyFor (Namespace out tl) (Just ev')
+  privacyFor (Namespace out ("VolatileDbEvent" : tl)) Nothing =
+    privacyFor (Namespace out tl :: Namespace (VolDB.TraceEvent blk)) Nothing
   privacyFor _ _ = Nothing
 
   detailsFor (Namespace out ("AddBlockEvent" : tl)) (Just (ChainDB.TraceAddBlockEvent ev')) =
@@ -261,8 +283,19 @@ instance MetaTrace  (ChainDB.TraceEvent blk) where
   detailsFor (Namespace out ("LedgerEvent" : tl)) (Just (ChainDB.TraceLedgerEvent ev')) =
     detailsFor (Namespace out tl) (Just ev')
   detailsFor (Namespace out ("LedgerEvent" : tl)) Nothing =
-    detailsFor (Namespace out tl :: Namespace (LedgerDB.TraceEvent blk)) Nothing
-
+    detailsFor (Namespace out tl :: Namespace (LedgerDB.TraceReplayEvent blk)) Nothing
+  detailsFor (Namespace out ("LedgerReplayEvent" : tl)) (Just (ChainDB.TraceLedgerReplayEvent ev')) =
+    detailsFor (Namespace out tl) (Just ev')
+  detailsFor (Namespace out ("LedgerReplayEvent" : tl)) Nothing =
+    detailsFor (Namespace out tl :: Namespace (LedgerDB.TraceReplayEvent blk)) Nothing
+  detailsFor (Namespace out ("ImmDbEvent" : tl)) (Just (ChainDB.TraceImmutableDBEvent ev')) =
+    detailsFor (Namespace out tl) (Just ev')
+  detailsFor (Namespace out ("ImmDbEvent" : tl)) Nothing =
+    detailsFor (Namespace out tl :: (Namespace (ImmDB.TraceEvent blk))) Nothing
+  detailsFor (Namespace out ("VolatileDbEvent" : tl)) (Just (ChainDB.TraceVolatileDBEvent ev')) =
+    detailsFor (Namespace out tl) (Just ev')
+  detailsFor (Namespace out ("VolatileDbEvent" : tl)) Nothing =
+    detailsFor (Namespace out tl :: (Namespace (VolDB.TraceEvent blk))) Nothing
   detailsFor _ _ = Nothing
 
   metricsDocFor (Namespace out ("AddBlockEvInitChainSelEventent" : tl)) =
@@ -281,6 +314,12 @@ instance MetaTrace  (ChainDB.TraceEvent blk) where
     metricsDocFor (Namespace out tl :: Namespace (ChainDB.TraceIteratorEvent blk))
   metricsDocFor (Namespace out ("LedgerEvent" : tl)) =
     metricsDocFor (Namespace out tl :: Namespace (LedgerDB.TraceEvent blk))
+  metricsDocFor (Namespace out ("LedgerReplayEvent" : tl)) =
+    metricsDocFor (Namespace out tl :: Namespace (LedgerDB.TraceReplayEvent blk))
+  metricsDocFor (Namespace out ("ImmDbEvent" : tl)) =
+    metricsDocFor (Namespace out tl :: Namespace (ImmDB.TraceEvent blk))
+  metricsDocFor (Namespace out ("VolatileDbEvent" : tl)) =
+    metricsDocFor (Namespace out tl :: Namespace (VolDB.TraceEvent blk))
   metricsDocFor _ = Nothing
 
   documentFor (Namespace out ("AddBlockEvent" : tl)) =
@@ -299,18 +338,39 @@ instance MetaTrace  (ChainDB.TraceEvent blk) where
     documentFor (Namespace out tl :: Namespace (ChainDB.TraceIteratorEvent blk))
   documentFor (Namespace out ("LedgerEvent" : tl)) =
     documentFor (Namespace out tl :: Namespace (LedgerDB.TraceEvent blk))
+  documentFor (Namespace out ("LedgerReplayEvent" : tl)) =
+    documentFor (Namespace out tl :: Namespace (LedgerDB.TraceReplayEvent blk))
+  documentFor (Namespace out ("ImmDbEvent" : tl)) =
+    documentFor (Namespace out tl :: Namespace (ImmDB.TraceEvent blk))
+  documentFor (Namespace out ("VolatileDbEvent" : tl)) =
+    documentFor (Namespace out tl :: Namespace (VolDB.TraceEvent blk))
   documentFor _ = Nothing
+
 
   allNamespaces =
     map (nsPrependInner "AddBlockEvent")
-        ((allNamespaces :: [Namespace (ChainDB.TraceAddBlockEvent blk)])
-          ++ map nsCast (allNamespaces :: [Namespace (ChainDB.TraceFollowerEvent blk)])
-          ++ map nsCast (allNamespaces :: [Namespace (ChainDB.TraceCopyToImmutableDBEvent blk)])
-          ++ map nsCast (allNamespaces :: [Namespace (ChainDB.TraceGCEvent blk)])
-          ++ map nsCast (allNamespaces :: [Namespace (ChainDB.TraceInitChainSelEvent blk)])
-          ++ map nsCast (allNamespaces :: [Namespace (ChainDB.TraceOpenEvent blk)])
-          ++ map nsCast (allNamespaces :: [Namespace (ChainDB.TraceIteratorEvent blk)])
-          ++ map nsCast (allNamespaces :: [Namespace (LedgerDB.TraceEvent blk)])
+        (  ( map  (nsPrependInner "AddBlockEvent")
+                  (allNamespaces :: [Namespace (ChainDB.TraceAddBlockEvent blk)]))
+          ++ map  (nsPrependInner "FollowerEvent")
+                  (allNamespaces :: [Namespace (ChainDB.TraceFollowerEvent blk)])
+          ++ map  (nsPrependInner "CopyToImmutableDBEvent")
+                  (allNamespaces :: [Namespace (ChainDB.TraceCopyToImmutableDBEvent blk)])
+          ++ map  (nsPrependInner "GCEvent")
+                  (allNamespaces :: [Namespace (ChainDB.TraceGCEvent blk)])
+          ++ map  (nsPrependInner "InitChainSelEvent")
+                  (allNamespaces :: [Namespace (ChainDB.TraceInitChainSelEvent blk)])
+          ++ map  (nsPrependInner "OpenEvent")
+                  (allNamespaces :: [Namespace (ChainDB.TraceOpenEvent blk)])
+          ++ map  (nsPrependInner "IteratorEvent")
+                  (allNamespaces :: [Namespace (ChainDB.TraceIteratorEvent blk)])
+          ++ map  (nsPrependInner "LedgerEvent")
+                  (allNamespaces :: [Namespace (LedgerDB.TraceEvent blk)])
+          ++ map  (nsPrependInner "LedgerReplayEvent")
+                  (allNamespaces :: [Namespace (LedgerDB.TraceReplayEvent blk)])
+          ++ map  (nsPrependInner "ImmDbEvent")
+                  (allNamespaces :: [Namespace (ImmDB.TraceEvent blk)])
+          ++ map  (nsPrependInner "VolatileDbEvent")
+                  (allNamespaces :: [Namespace (VolDB.TraceEvent blk)])
         )
 
 
@@ -568,6 +628,29 @@ instance MetaTrace  (ChainDB.TraceAddBlockEvent blk) where
   documentFor (Namespace out ("PipelinigEvent" : tl)) =
     documentFor (Namespace out tl :: Namespace (ChainDB.TracePipeliningEvent blk))
 
+  metricsDocFor
+
+  allNamespaces =
+    [ Namespace [] ["IgnoreBlockOlderThanK"]
+    , Namespace [] ["IgnoreBlockAlreadyInVolatileDB"]
+    , Namespace [] ["IgnoreInvalidBlock"]
+    , Namespace [] ["AddedBlockToQueue"]
+    , Namespace [] ["BlockInTheFuture"]
+    , Namespace [] ["AddedBlockToVolatileDB"]
+    , Namespace [] ["PoppedBlockFromQueue"]
+    , Namespace [] ["TryAddToCurrentChain"]
+    , Namespace [] ["TrySwitchToAFork"]
+    , Namespace [] ["StoreButDontChange"]
+    , Namespace [] ["ChangingSelection"]
+    , Namespace [] ["AddedToCurrentChain"]
+    , Namespace [] ["SwitchedToAFork"]
+    , Namespace [] ["AddBlockValidation"]
+    , Namespace [] ["ChainSelectionForFutureBlock"]
+    , Namespace [] ["PipelinigEvent"]
+    ]
+    ++ (map (nsPrependInner "PipelinigEvent")
+      (allNamespaces :: [Namespace (ChainDB.TracePipeliningEvent blk)]))
+
 --------------------------------------------------------------------------------
 -- ChainDB TracePipeliningEvent
 --------------------------------------------------------------------------------
@@ -621,6 +704,13 @@ instance MetaTrace  (ChainDB.TracePipeliningEvent blk) where
     "The body of tentative block turned out to be invalid."
   documentFor (Namespace _ ["SetTentatOutdatedTentativeHeaderiveHeader"]) = Just
     "We selected a new (better) chain, which cleared the previous tentative header."
+
+  allNamespaces =
+    [ Namespace [] ["SetTentativeHeader"]
+    , Namespace [] ["TrapTentativeHeader"]
+    , Namespace [] ["SetTentatOutdatedTentativeHeaderiveHeader"]
+    ]
+
 
 addedHdrsNewChain :: HasHeader (Header blk)
   => AF.AnchoredFragment (Header blk)
@@ -691,6 +781,13 @@ instance MetaTrace (ChainDB.TraceFollowerEvent blk) where
          \ stream these blocks too."
   documentFor _ = Nothing
 
+  allNamespaces =
+    [ Namespace [] ["NewFollower"]
+    , Namespace [] ["FollowerNoLongerInMem"]
+    , Namespace [] ["FollowerSwitchToMem"]
+    , Namespace [] ["FollowerNewImmIterator"]
+    ]
+
 
 --------------------------------------------------------------------------------
 -- ChainDB TraceCopyToImmutableDB
@@ -724,6 +821,11 @@ instance MetaTrace (ChainDB.TraceCopyToImmutableDBEvent blk) where
   documentFor (Namespace _ ["NoBlocksToCopyToImmutableDB"]) = Just
      "There are no block to copy to the ImmDB."
   documentFor _ = Nothing
+
+  allNamespaces =
+    [ Namespace [] ["CopiedBlockToImmutableDB"]
+    , Namespace [] ["NoBlocksToCopyToImmutableDB"]
+    ]
 
 -- --------------------------------------------------------------------------------
 -- -- ChainDB GCEvent
@@ -759,6 +861,11 @@ instance MetaTrace (ChainDB.TraceGCEvent blk) where
      "A garbage collection for the given 'SlotNo' was scheduled to happen\
      \ at the given time."
   documentFor _ = Nothing
+
+  allNamespaces =
+    [ Namespace [] ["PerformedGC"]
+    , Namespace [] ["ScheduledGC"]
+    ]
 
 -- --------------------------------------------------------------------------------
 -- -- TraceInitChainSelEvent
@@ -806,6 +913,14 @@ instance MetaTrace (ChainDB.TraceInitChainSelEvent blk) where
      \ at the given time."
   documentFor (Namespace o ("InitChainSelValidation" : tl)) =
      documentFor (Namespace o tl :: Namespace (ChainDB.TraceValidationEvent blk))
+
+  allNamespaces =
+    [ Namespace [] ["InitalChainSelected"]
+    , Namespace [] ["StartedInitChainSelection"]
+    ]
+    ++ (map (nsPrependInner "InitChainSelValidation")
+          (allNamespaces :: [Namespace (ChainDB.TraceValidationEvent blk)]))
+
 
 
 --------------------------------------------------------------------------------
@@ -906,7 +1021,13 @@ instance MetaTrace (ChainDB.TraceValidationEvent blk) where
     documentFor (Namespace _ ["UpdateLedgerDb"]) = Just ""
     documentFor _ = Nothing
 
-
+    allNamespaces =
+      [ Namespace [] ["ValidCandidate"]
+      , Namespace [] ["CandidateContainsFutureBlocks"]
+      , Namespace [] ["CandidateContainsFutureBlocksExceedingClockSkew"]
+      , Namespace [] ["InvalidBlock"]
+      , Namespace [] ["UpdateLedgerDb"]
+      ]
 
 --------------------------------------------------------------------------------
 -- TraceOpenEvent
@@ -1004,6 +1125,18 @@ instance MetaTrace (ChainDB.TraceOpenEvent blk) where
       ""
     documentFor (Namespace _ ["StartedOpeningLgrDB"]) = Just
       ""
+
+    allNamespaces =
+      [ Namespace [] ["OpenedDB"]
+      , Namespace [] ["ClosedDB"]
+      , Namespace [] ["OpenedImmutableDB"]
+      , Namespace [] ["OpenedVolatileDB"]
+      , Namespace [] ["OpenedLgrDB"]
+      , Namespace [] ["StartedOpeningDB"]
+      , Namespace [] ["StartedOpeningImmutableDB"]
+      , Namespace [] ["StartedOpeningVolatileDB"]
+      , Namespace [] ["StartedOpeningLgrDB"]
+      ]
 
 --------------------------------------------------------------------------------
 -- IteratorEvent
@@ -1117,6 +1250,18 @@ instance MetaTrace (ChainDB.TraceIteratorEvent blk) where
       \ back in the VolatileDB again because the ImmDB doesn't have the\
       \ next block we're looking for."
 
+    allNamespaces =
+      [ Namespace [] ["StreamFromVolatileDB"]
+      , Namespace [] ["StreamFromImmutableDB"]
+      , Namespace [] ["StreamFromBoth"]
+      , Namespace [] ["BlockMissingFromVolatileDB"]
+      , Namespace [] ["BlockWasCopiedToImmutableDB"]
+      , Namespace [] ["BlockGCedFromVolatileDB"]
+      , Namespace [] ["SwitchBackToVolatileDB"]
+      ]
+      ++ map  (nsPrependInner "UnknownRangeRequested")
+              (allNamespaces :: [Namespace (ChainDB.UnknownRange blk)])
+
 --------------------------------------------------------------------------------
 -- UnknownRange
 --------------------------------------------------------------------------------
@@ -1151,6 +1296,11 @@ instance MetaTrace (ChainDB.UnknownRange blk) where
       ""
     documentFor (Namespace _ ["ForkTooOld"]) = Just
       ""
+
+    allNamespaces =
+      [ Namespace [] ["MissingBlock"]
+      , Namespace [] ["ForkTooOld"]
+      ]
 
 -- --------------------------------------------------------------------------------
 -- -- LedgerDB.TraceEvent
@@ -1196,9 +1346,491 @@ instance MetaTrace (LedgerDB.TraceEvent blk) where
     documentFor (Namespace _ ["InvalidSnapshot"]) = Just
           "An on disk snapshot was skipped because it was invalid."
 
+    allNamespaces =
+      [ Namespace [] ["TookSnapshot"]
+      , Namespace [] ["DeletedSnapshot"]
+      , Namespace [] ["InvalidSnapshot"]
+      ]
+
+
+--------------------------------------------------------------------------------
+-- LedgerDB TraceReplayEvent
+--------------------------------------------------------------------------------
+
+instance (StandardHash blk, ConvertRawHash blk)
+          => LogFormatting (LedgerDB.TraceReplayEvent blk) where
+  forHuman (LedgerDB.ReplayFromGenesis _replayTo) =
+      "Replaying ledger from genesis"
+  forHuman (LedgerDB.ReplayFromSnapshot snap tip' _ _) =
+      "Replaying ledger from snapshot " <> showT snap <> " at " <>
+        renderRealPointAsPhrase tip'
+  forHuman (LedgerDB.ReplayedBlock
+              pt
+              _ledgerEvents
+              (LedgerDB.ReplayStart replayFrom)
+              (LedgerDB.ReplayGoal replayTo)) =
+          let fromSlot = withOrigin 0 id $ unSlotNo <$> pointSlot replayFrom
+              atSlot   = unSlotNo $ realPointSlot pt
+              atDiff   = atSlot - fromSlot
+              toSlot   = withOrigin 0 id $ unSlotNo <$> pointSlot replayTo
+              toDiff   = toSlot - fromSlot
+          in
+             "Replayed block: slot "
+          <> showT atSlot
+          <> " out of "
+          <> showT toSlot
+          <> ". Progress: "
+          <> showProgressT (fromIntegral atDiff) (fromIntegral toDiff)
+          <> "%"
+
+  forMachine _dtal (LedgerDB.ReplayFromGenesis _replayTo) =
+      mconcat [ "kind" .= String "ReplayFromGenesis" ]
+  forMachine dtal (LedgerDB.ReplayFromSnapshot snap tip' _ _) =
+      mconcat [ "kind" .= String "ReplayFromSnapshot"
+               , "snapshot" .= forMachine dtal snap
+               , "tip" .= show tip' ]
+  forMachine _dtal (LedgerDB.ReplayedBlock
+                      pt
+                      _ledgerEvents
+                      _
+                      (LedgerDB.ReplayGoal replayTo)) =
+      mconcat [ "kind" .= String "ReplayedBlock"
+               , "slot" .= unSlotNo (realPointSlot pt)
+               , "tip"  .= withOrigin 0 unSlotNo (pointSlot replayTo) ]
+
+instance MetaTrace (LedgerDB.TraceReplayEvent blk) where
+    namespaceFor LedgerDB.ReplayFromGenesis {} = Namespace [] ["ReplayFromGenesis"]
+    namespaceFor LedgerDB.ReplayFromSnapshot {} = Namespace [] ["ReplayFromSnapshot"]
+    namespaceFor LedgerDB.ReplayedBlock {} = Namespace [] ["ReplayedBlock"]
+
+    severityFor  (Namespace _ ["ReplayFromGenesis"]) _ = Just Info
+    severityFor  (Namespace _ ["ReplayFromSnapshot"]) _ = Just Info
+    severityFor  (Namespace _ ["ReplayedBlock"]) _ = Just Info
+    severityFor _ _ = Nothing
+
+    documentFor (Namespace _ ["ReplayFromGenesis"]) = Just
+      "There were no LedgerDB snapshots on disk, so we're replaying all\
+      \ blocks starting from Genesis against the initial ledger.\
+      \ The @replayTo@ parameter corresponds to the block at the tip of the\
+      \ ImmDB, i.e., the last block to replay."
+    documentFor (Namespace _ ["ReplayFromSnapshot"]) = Just
+      "There was a LedgerDB snapshot on disk corresponding to the given tip.\
+      \ We're replaying more recent blocks against it.\
+      \ The @replayTo@ parameter corresponds to the block at the tip of the\
+      \ ImmDB, i.e., the last block to replay."
+    documentFor (Namespace _ ["ReplayedBlock"]) = Just
+      "We replayed the given block (reference) on the genesis snapshot\
+      \ during the initialisation of the LedgerDB.\
+      \\n\
+      \ The @blockInfo@ parameter corresponds replayed block and the @replayTo@\
+      \ parameter corresponds to the block at the tip of the ImmDB, i.e.,\
+      \ the last block to replay."
+    documentFor _ = Nothing
+
+    allNamespaces =
+      [ Namespace [] ["ReplayFromGenesis"]
+      , Namespace [] ["ReplayFromSnapshot"]
+      , Namespace [] ["ReplayedBlock"]
+      ]
+
+--------------------------------------------------------------------------------
+-- TraceImmutableDBEvent
+--------------------------------------------------------------------------------
+
+instance (ConvertRawHash blk, StandardHash blk)
+  => LogFormatting (ImmDB.TraceEvent blk) where
+    forMachine _dtal ImmDB.NoValidLastLocation =
+      mconcat [ "kind" .= String "NoValidLastLocation" ]
+    forMachine _dtal (ImmDB.ValidatedLastLocation chunkNo immTip) =
+      mconcat [ "kind" .= String "ValidatedLastLocation"
+               , "chunkNo" .= String (renderChunkNo chunkNo)
+               , "immTip" .= String (renderTipHash immTip)
+               , "blockNo" .= String (renderTipBlockNo immTip)
+               ]
+    forMachine dtal (ImmDB.ChunkValidationEvent traceChunkValidation) =
+      forMachine dtal traceChunkValidation
+    forMachine _dtal (ImmDB.DeletingAfter immTipWithInfo) =
+      mconcat [ "kind" .= String "DeletingAfter"
+               , "immTipHash" .= String (renderWithOrigin renderTipHash immTipWithInfo)
+               , "immTipBlockNo" .= String (renderWithOrigin renderTipBlockNo immTipWithInfo)
+               ]
+    forMachine _dtal ImmDB.DBAlreadyClosed =
+      mconcat [ "kind" .= String "DBAlreadyClosed" ]
+    forMachine _dtal ImmDB.DBClosed =
+      mconcat [ "kind" .= String "DBClosed" ]
+    forMachine dtal (ImmDB.TraceCacheEvent cacheEv) =
+      kindContext "TraceCacheEvent" $ forMachine dtal cacheEv
+    forMachine _dtal (ImmDB.ChunkFileDoesntFit expectPrevHash actualPrevHash) =
+      mconcat [ "kind" .= String "ChunkFileDoesntFit"
+               , "expectedPrevHash" .= String (renderChainHash (Text.decodeLatin1 .
+                                              toRawHash (Proxy @blk)) expectPrevHash)
+               , "actualPrevHash" .= String (renderChainHash (Text.decodeLatin1 .
+                                              toRawHash (Proxy @blk)) actualPrevHash)
+               ]
+    forMachine _dtal (ImmDB.Migrating txt) =
+      mconcat [ "kind" .= String "Migrating"
+               , "info" .= String txt
+               ]
+
+    forHuman ImmDB.NoValidLastLocation =
+          "No valid last location was found. Starting from Genesis."
+    forHuman (ImmDB.ValidatedLastLocation cn t) =
+            "Found a valid last location at chunk "
+          <> showT cn
+          <> " with tip "
+          <> renderRealPoint (ImmDB.tipToRealPoint t)
+          <> "."
+    forHuman (ImmDB.ChunkValidationEvent e) = case e of
+          ImmDB.StartedValidatingChunk chunkNo outOf ->
+               "Validating chunk no. " <> showT chunkNo <> " out of " <> showT outOf
+            <> ". Progress: " <> showProgressT (max (chunkNoToInt chunkNo - 1) 0) (chunkNoToInt outOf) <> "%"
+          ImmDB.ValidatedChunk chunkNo outOf ->
+               "Validated chunk no. " <> showT chunkNo <> " out of " <> showT outOf
+            <> ". Progress: " <> showProgressT (chunkNoToInt chunkNo) (chunkNoToInt outOf) <> "%"
+          ImmDB.MissingChunkFile cn      ->
+            "The chunk file with number " <> showT cn <> " is missing."
+          ImmDB.InvalidChunkFile cn er    ->
+            "The chunk file with number " <> showT cn <> " is invalid: " <> showT er
+          ImmDB.MissingPrimaryIndex cn   ->
+            "The primary index of the chunk file with number " <> showT cn <> " is missing."
+          ImmDB.MissingSecondaryIndex cn ->
+            "The secondary index of the chunk file with number " <> showT cn <> " is missing."
+          ImmDB.InvalidPrimaryIndex cn   ->
+            "The primary index of the chunk file with number " <> showT cn <> " is invalid."
+          ImmDB.InvalidSecondaryIndex cn ->
+            "The secondary index of the chunk file with number " <> showT cn <> " is invalid."
+          ImmDB.RewritePrimaryIndex cn   ->
+            "Rewriting the primary index for the chunk file with number " <> showT cn <> "."
+          ImmDB.RewriteSecondaryIndex cn ->
+            "Rewriting the secondary index for the chunk file with number " <> showT cn <> "."
+    forHuman (ImmDB.ChunkFileDoesntFit ch1 ch2 ) =
+          "Chunk file doesn't fit. The hash of the block " <> showT ch2 <> " doesn't match the previous hash of the first block in the current epoch: " <> showT ch1 <> "."
+    forHuman (ImmDB.Migrating t) = "Migrating: " <> t
+    forHuman (ImmDB.DeletingAfter wot) = "Deleting chunk files after " <> showT wot
+    forHuman ImmDB.DBAlreadyClosed {} = "Immutable DB was already closed. Double closing."
+    forHuman ImmDB.DBClosed {} = "Closed Immutable DB."
+    forHuman (ImmDB.TraceCacheEvent ev') = "Cache event: " <> case ev' of
+          ImmDB.TraceCurrentChunkHit   cn   curr -> "Current chunk hit: " <> showT cn <> ", cache size: " <> showT curr
+          ImmDB.TracePastChunkHit      cn   curr -> "Past chunk hit: " <> showT cn <> ", cache size: " <> showT curr
+          ImmDB.TracePastChunkMiss     cn   curr -> "Past chunk miss: " <> showT cn <> ", cache size: " <> showT curr
+          ImmDB.TracePastChunkEvict    cn   curr -> "Past chunk evict: " <> showT cn <> ", cache size: " <> showT curr
+          ImmDB.TracePastChunksExpired cns  curr -> "Past chunks expired: " <> showT cns <> ", cache size: " <> showT curr
+
+
+instance MetaTrace (ImmDB.TraceEvent blk) where
+    namespaceFor ImmDB.NoValidLastLocation {} = Namespace [] ["NoValidLastLocation"]
+    namespaceFor ImmDB.ValidatedLastLocation {} = Namespace [] ["ValidatedLastLocation"]
+    namespaceFor (ImmDB.ChunkValidationEvent ev) =
+      nsPrependInner "ChunkValidation" (namespaceFor ev)
+    namespaceFor ImmDB.ChunkFileDoesntFit {} = Namespace [] ["ChunkFileDoesntFit"]
+    namespaceFor ImmDB.Migrating {} = Namespace [] ["Migrating"]
+    namespaceFor ImmDB.DeletingAfter {} = Namespace [] ["DeletingAfter"]
+    namespaceFor ImmDB.DBAlreadyClosed {} = Namespace [] ["DBAlreadyClosed"]
+    namespaceFor ImmDB.DBClosed {} = Namespace [] ["DBClosed"]
+    namespaceFor (ImmDB.TraceCacheEvent ev) =
+      nsPrependInner "CacheEvent" (namespaceFor ev)
+
+    severityFor  (Namespace _ ["NoValidLastLocation"]) _ = Just Info
+    severityFor  (Namespace _ ["ValidatedLastLocation"]) _ = Just Info
+    severityFor (Namespace out ("ChunkValidation" : tl))
+                    (Just (ImmDB.ChunkValidationEvent ev')) =
+      severityFor (Namespace out tl) (Just ev')
+    severityFor (Namespace out ("ChunkValidationEvent" : tl)) Nothing =
+      severityFor (Namespace out tl :: Namespace (ImmDB.TraceChunkValidation blk chunkNo)) Nothing
+    severityFor  (Namespace _ ["ChunkFileDoesntFit"]) _ = Just Warning
+    severityFor  (Namespace _ ["Migrating"]) _ = Just Debug
+    severityFor  (Namespace _ ["DeletingAfter"]) _ = Just Debug
+    severityFor  (Namespace _ ["DBAlreadyClosed"]) _ = Just Error
+    severityFor  (Namespace _ ["DBClosed"]) _ = Just Info
+    severityFor (Namespace out ("CacheEvent" : tl))
+                    (Just (ImmDB.TraceCacheEvent ev')) =
+      severityFor (Namespace out tl) (Just ev')
+    severityFor (Namespace out ("CacheEvent" : tl)) Nothing =
+      severityFor (Namespace out tl :: Namespace ImmDB.TraceCacheEvent) Nothing
+
+    documentFor (Namespace _ ["NoValidLastLocation"]) = Just
+      "No valid last location was found"
+    documentFor (Namespace _ ["ValidatedLastLocation"]) = Just
+      "The last location was validatet"
+    documentFor (Namespace o ("ChunkValidation" : tl)) =
+       documentFor (Namespace o tl :: Namespace (ImmDB.TraceChunkValidation blk chunkNo))
+    documentFor (Namespace _ ["ChunkFileDoesntFit"]) = Just
+      "The hash of the last block in the previous epoch doesn't match the\
+       \ previous hash of the first block in the current epoch"
+    documentFor (Namespace _ ["Migrating"]) = Just
+      "Performing a migration of the on-disk files."
+    documentFor (Namespace _ ["DeletingAfter"]) = Just
+      "Delete after"
+    documentFor (Namespace _ ["DBClosed"]) = Just
+      "Closing the immutable DB"
+    documentFor (Namespace o ("CacheEvent" : tl)) =
+       documentFor (Namespace o tl :: Namespace ImmDB.TraceCacheEvent)
+    documentFor _ = Nothing
+
+    allNamespaces =
+      [ Namespace [] ["NoValidLastLocation"]
+      , Namespace [] ["ValidatedLastLocation"]
+      , Namespace [] ["ChunkFileDoesntFit"]
+      , Namespace [] ["Migrating"]
+      , Namespace [] ["DeletingAfter"]
+      , Namespace [] ["DBClosed"]
+      ]
+      ++ map  (nsPrependInner "ChunkValidation")
+              (allNamespaces :: [Namespace (ImmDB.TraceChunkValidation blk chunkNo)])
+      ++ map  (nsPrependInner "CacheEvent")
+              (allNamespaces :: [Namespace ImmDB.TraceCacheEvent])
+
+--------------------------------------------------------------------------------
+-- ImmDB.TraceChunkValidation
+--------------------------------------------------------------------------------
+
+
+instance ConvertRawHash blk => LogFormatting (ImmDB.TraceChunkValidation blk ImmDB.ChunkNo) where
+    forMachine _dtal (ImmDB.RewriteSecondaryIndex chunkNo) =
+        mconcat [ "kind" .= String "TraceImmutableDBEvent.RewriteSecondaryIndex"
+                 , "chunkNo" .= String (renderChunkNo chunkNo)
+                 ]
+    forMachine _dtal (ImmDB.RewritePrimaryIndex chunkNo) =
+        mconcat [ "kind" .= String "TraceImmutableDBEvent.RewritePrimaryIndex"
+                 , "chunkNo" .= String (renderChunkNo chunkNo)
+                 ]
+    forMachine _dtal (ImmDB.MissingPrimaryIndex chunkNo) =
+        mconcat [ "kind" .= String "TraceImmutableDBEvent.MissingPrimaryIndex"
+                 , "chunkNo" .= String (renderChunkNo chunkNo)
+                 ]
+    forMachine _dtal (ImmDB.MissingSecondaryIndex chunkNo) =
+        mconcat [ "kind" .= String "TraceImmutableDBEvent.MissingSecondaryIndex"
+                 , "chunkNo" .= String (renderChunkNo chunkNo)
+                 ]
+    forMachine _dtal (ImmDB.InvalidPrimaryIndex chunkNo) =
+        mconcat [ "kind" .= String "TraceImmutableDBEvent.InvalidPrimaryIndex"
+                 , "chunkNo" .= String (renderChunkNo chunkNo)
+                 ]
+    forMachine _dtal (ImmDB.InvalidSecondaryIndex chunkNo) =
+        mconcat [ "kind" .= String "TraceImmutableDBEvent.InvalidSecondaryIndex"
+                 , "chunkNo" .= String (renderChunkNo chunkNo)
+                 ]
+    forMachine _dtal (ImmDB.InvalidChunkFile chunkNo
+                      (ImmDB.ChunkErrHashMismatch hashPrevBlock prevHashOfBlock)) =
+        mconcat [ "kind" .= String "TraceImmutableDBEvent.InvalidChunkFile.ChunkErrHashMismatch"
+                 , "chunkNo" .= String (renderChunkNo chunkNo)
+                 , "hashPrevBlock" .= String (Text.decodeLatin1 . toRawHash (Proxy @blk) $ hashPrevBlock)
+                 , "prevHashOfBlock" .= String (renderChainHash (Text.decodeLatin1 . toRawHash (Proxy @blk)) prevHashOfBlock)
+                 ]
+    forMachine dtal (ImmDB.InvalidChunkFile chunkNo (ImmDB.ChunkErrCorrupt pt)) =
+        mconcat [ "kind" .= String "TraceImmutableDBEvent.InvalidChunkFile.ChunkErrCorrupt"
+                 , "chunkNo" .= String (renderChunkNo chunkNo)
+                 , "block" .= String (renderPointForDetails dtal pt)
+                 ]
+    forMachine _dtal (ImmDB.ValidatedChunk chunkNo _) =
+        mconcat [ "kind" .= String "TraceImmutableDBEvent.ValidatedChunk"
+                 , "chunkNo" .= String (renderChunkNo chunkNo)
+                 ]
+    forMachine _dtal (ImmDB.MissingChunkFile chunkNo) =
+        mconcat [ "kind" .= String "TraceImmutableDBEvent.MissingChunkFile"
+                 , "chunkNo" .= String (renderChunkNo chunkNo)
+                 ]
+    forMachine _dtal (ImmDB.InvalidChunkFile chunkNo (ImmDB.ChunkErrRead readIncErr)) =
+        mconcat [ "kind" .= String "TraceImmutableDBEvent.InvalidChunkFile.ChunkErrRead"
+                 , "chunkNo" .= String (renderChunkNo chunkNo)
+                 , "error" .= String (showT readIncErr)
+                 ]
+    forMachine _dtal (ImmDB.StartedValidatingChunk initialChunk finalChunk) =
+        mconcat [ "kind" .= String "TraceImmutableDBEvent.StartedValidatingChunk"
+                 , "initialChunk" .= renderChunkNo initialChunk
+                 , "finalChunk" .= renderChunkNo finalChunk
+                 ]
+
+instance MetaTrace (ImmDB.TraceChunkValidation blk chunkNo) where
+    namespaceFor ImmDB.StartedValidatingChunk {} = Namespace [] ["StartedValidatingChunk"]
+    namespaceFor ImmDB.ValidatedChunk {} = Namespace [] ["ValidatedChunk"]
+    namespaceFor ImmDB.MissingChunkFile {} = Namespace [] ["MissingChunkFile"]
+    namespaceFor ImmDB.InvalidChunkFile {} = Namespace [] ["InvalidChunkFile"]
+    namespaceFor ImmDB.MissingPrimaryIndex {} = Namespace [] ["MissingPrimaryIndex"]
+    namespaceFor ImmDB.MissingSecondaryIndex {} = Namespace [] ["MissingSecondaryIndex"]
+    namespaceFor ImmDB.InvalidPrimaryIndex {} = Namespace [] ["InvalidPrimaryIndex"]
+    namespaceFor ImmDB.InvalidSecondaryIndex {} = Namespace [] ["InvalidSecondaryIndex"]
+    namespaceFor ImmDB.RewritePrimaryIndex {} = Namespace [] ["RewritePrimaryIndex"]
+    namespaceFor ImmDB.RewriteSecondaryIndex {} = Namespace [] ["RewriteSecondaryIndex"]
+
+    severityFor  (Namespace _ ["StartedValidatingChunk"]) _ = Just Info
+    severityFor  (Namespace _ ["ValidatedChunk"]) _ = Just Info
+    severityFor  (Namespace _ ["MissingChunkFile"]) _ = Just Warning
+    severityFor  (Namespace _ ["InvalidChunkFile"]) _ = Just Warning
+    severityFor  (Namespace _ ["MissingPrimaryIndex"]) _ = Just Warning
+    severityFor  (Namespace _ ["MissingSecondaryIndex"]) _ = Just Warning
+    severityFor  (Namespace _ ["InvalidPrimaryIndex"]) _ = Just Warning
+    severityFor  (Namespace _ ["InvalidSecondaryIndex"]) _ = Just Warning
+    severityFor  (Namespace _ ["RewritePrimaryIndex"]) _ = Just Warning
+    severityFor  (Namespace _ ["RewriteSecondaryIndex"]) _ = Just Warning
+
+    documentFor (Namespace _ ["StartedValidatingChunk"]) = Just
+      ""
+    documentFor (Namespace _ ["ValidatedChunk"]) = Just
+      ""
+    documentFor (Namespace _ ["MissingChunkFile"]) = Just
+      ""
+    documentFor (Namespace _ ["InvalidChunkFile"]) = Just
+      ""
+    documentFor (Namespace _ ["MissingPrimaryIndex"]) = Just
+      ""
+    documentFor (Namespace _ ["MissingSecondaryIndex"]) = Just
+      ""
+    documentFor (Namespace _ ["InvalidPrimaryIndex"]) = Just
+      ""
+    documentFor (Namespace _ ["InvalidSecondaryIndex"]) = Just
+      ""
+    documentFor (Namespace _ ["RewritePrimaryIndex"]) = Just
+      ""
+    documentFor (Namespace _ ["RewriteSecondaryIndex"]) = Just
+      ""
+    documentFor _ = Nothing
+
+    allNamespaces =
+      [ Namespace [] ["StartedValidatingChunk"]
+      , Namespace [] ["ValidatedChunk"]
+      , Namespace [] ["MissingChunkFile"]
+      , Namespace [] ["InvalidChunkFile"]
+      , Namespace [] ["MissingPrimaryIndex"]
+      , Namespace [] ["MissingSecondaryIndex"]
+      , Namespace [] ["InvalidPrimaryIndex"]
+      , Namespace [] ["InvalidSecondaryIndex"]
+      , Namespace [] ["RewritePrimaryIndex"]
+      , Namespace [] ["RewriteSecondaryIndex"]
+      ]
+
+--------------------------------------------------------------------------------
+-- ImmDB.TraceCacheEvent
+--------------------------------------------------------------------------------
+
+instance LogFormatting ImmDB.TraceCacheEvent where
+    forMachine _dtal (ImmDB.TraceCurrentChunkHit chunkNo nbPastChunksInCache) =
+          mconcat [ "kind" .= String "TraceCurrentChunkHit"
+                   , "chunkNo" .= String (renderChunkNo chunkNo)
+                   , "noPastChunks" .= String (showT nbPastChunksInCache)
+                   ]
+    forMachine _dtal (ImmDB.TracePastChunkHit chunkNo nbPastChunksInCache) =
+          mconcat [ "kind" .= String "TracePastChunkHit"
+                   , "chunkNo" .= String (renderChunkNo chunkNo)
+                   , "noPastChunks" .= String (showT nbPastChunksInCache)
+                   ]
+    forMachine _dtal (ImmDB.TracePastChunkMiss chunkNo nbPastChunksInCache) =
+          mconcat [ "kind" .= String "TracePastChunkMiss"
+                   , "chunkNo" .= String (renderChunkNo chunkNo)
+                   , "noPastChunks" .= String (showT nbPastChunksInCache)
+                   ]
+    forMachine _dtal (ImmDB.TracePastChunkEvict chunkNo nbPastChunksInCache) =
+          mconcat [ "kind" .= String "TracePastChunkEvict"
+                   , "chunkNo" .= String (renderChunkNo chunkNo)
+                   , "noPastChunks" .= String (showT nbPastChunksInCache)
+                   ]
+    forMachine _dtal (ImmDB.TracePastChunksExpired chunkNos nbPastChunksInCache) =
+          mconcat [ "kind" .= String "TracePastChunksExpired"
+                   , "chunkNos" .= String (Text.pack . show $ map renderChunkNo chunkNos)
+                   , "noPastChunks" .= String (showT nbPastChunksInCache)
+                   ]
+
+instance MetaTrace ImmDB.TraceCacheEvent where
+    namespaceFor ImmDB.TraceCurrentChunkHit {} = Namespace [] ["CurrentChunkHit"]
+    namespaceFor ImmDB.TracePastChunkHit {} = Namespace [] ["PastChunkHit"]
+    namespaceFor ImmDB.TracePastChunkMiss {} = Namespace [] ["PastChunkMiss"]
+    namespaceFor ImmDB.TracePastChunkEvict {} = Namespace [] ["PastChunkEvict"]
+    namespaceFor ImmDB.TracePastChunksExpired {} = Namespace [] ["PastChunkExpired"]
+
+    severityFor  (Namespace _ ["CurrentChunkHit"]) _ = Just Debug
+    severityFor  (Namespace _ ["PastChunkHit"]) _ = Just Debug
+    severityFor  (Namespace _ ["PastChunkMiss"]) _ = Just Debug
+    severityFor  (Namespace _ ["PastChunkEvict"]) _ = Just Debug
+    severityFor  (Namespace _ ["PastChunkExpired"]) _ = Just Debug
+    severityFor  _ _ = Nothing
+
+    documentFor (Namespace _ ["CurrentChunkHit"]) = Just
+      "Current chunk found in the cache."
+    documentFor (Namespace _ ["PastChunkHit"]) = Just
+      "Past chunk found in the cache"
+    documentFor (Namespace _ ["PastChunkMiss"]) = Just
+      "Past chunk was not found in the cache"
+    documentFor (Namespace _ ["PastChunkEvict"]) = Just
+      "The least recently used past chunk was evicted because the cache\
+       \ was full."
+    documentFor (Namespace _ ["PastChunkExpired"]) = Just
+      ""
+    documentFor _ = Nothing
+
+    allNamespaces =
+      [ Namespace [] ["CurrentChunkHit"]
+      , Namespace [] ["PastChunkHit"]
+      , Namespace [] ["PastChunkMiss"]
+      , Namespace [] ["PastChunkEvict"]
+      , Namespace [] ["PastChunkExpired"]
+      ]
+
+--------------------------------------------------------------------------------
+-- VolDb.TraceEvent
+--------------------------------------------------------------------------------
+
+instance StandardHash blk => LogFormatting (VolDB.TraceEvent blk) where
+    forMachine _dtal VolDB.DBAlreadyClosed =
+      mconcat [ "kind" .= String "DBAlreadyClosed"]
+    forMachine _dtal (VolDB.BlockAlreadyHere blockId) =
+      mconcat [ "kind" .= String "BlockAlreadyHere"
+               , "blockId" .= String (showT blockId)
+               ]
+    forMachine _dtal (VolDB.Truncate pErr fsPath blockOffset) =
+      mconcat [ "kind" .= String "Truncate"
+               , "parserError" .= String (showT pErr)
+               , "file" .= String (showT fsPath)
+               , "blockOffset" .= String (showT blockOffset)
+               ]
+    forMachine _dtal (VolDB.InvalidFileNames fsPaths) =
+      mconcat [ "kind" .= String "InvalidFileNames"
+               , "files" .= String (Text.pack . show $ map show fsPaths)
+              ]
+
+instance MetaTrace (VolDB.TraceEvent blk) where
+    namespaceFor VolDB.DBAlreadyClosed {} = Namespace [] ["DBAlreadyClosed"]
+    namespaceFor VolDB.BlockAlreadyHere {} = Namespace [] ["BlockAlreadyHere"]
+    namespaceFor VolDB.Truncate {} = Namespace [] ["Truncate"]
+    namespaceFor VolDB.InvalidFileNames {} = Namespace [] ["InvalidFileNames"]
 
 
 
+-- sevTraceVolatileDBEvent :: VolDB.TraceEvent blk -> SeverityS
+-- sevTraceVolatileDBEvent _ = Debug
+
+-- namesForChainDBVolatileDBEvent :: VolDB.TraceEvent blk -> [Text]
+-- namesForChainDBVolatileDBEvent VolDb.DBAlreadyClosed =
+--     ["DBAlreadyClosed"]
+-- namesForChainDBVolatileDBEvent (VolDb.Truncate {}) =
+--     ["Truncate"]
+-- namesForChainDBVolatileDBEvent (VolDb.InvalidFileNames {}) =
+--     ["InvalidFileNames"]
+-- namesForChainDBVolatileDBEvent (VolDb.BlockAlreadyHere {}) =
+--     ["BlockAlreadyHere"]
+
+
+
+
+
+-- docChainDBVolatileDBEvent :: Documented (VolDB.TraceEvent blk)
+-- docChainDBVolatileDBEvent = Documented [
+--       DocMsg
+--       ["DBAlreadyClosed"]
+--       []
+--       "When closing the DB it was found itis closed already."
+--     , DocMsg
+--       ["Truncate"]
+--       []
+--       "Truncates a file up to offset because of the error."
+--     , DocMsg
+--       ["InvalidFileNames"]
+--       []
+--       "Reports a list of invalid file paths."
+--     , DocMsg
+--       ["BlockAlreadyHere"]
+--       []
+--       "A block was found to be already in the DB."
+--   ]
 
 
 
@@ -1361,44 +1993,10 @@ instance MetaTrace (LedgerDB.TraceEvent blk) where
 
 
 
-  -- namespaceFor (ChainDB.TraceFollowerEvent ev) =
-  --   nsPrependInner "FollowerEvent" (namespaceFor ev)
-  -- namespaceFor (ChainDB.TraceCopyToImmutableDBEvent ev) =
-  --   nsPrependInner "CopyToImmutableDBEvent" (namespaceFor ev)
-  -- namespaceFor (ChainDB.TraceGCEvent ev) =
-  --   nsPrependInner "GCEvent" (namespaceFor ev)
-  -- namespaceFor (ChainDB.TraceInitChainSelEvent ev) =
-  --   nsPrependInner "InitChainSelEvent" (namespaceFor ev)
-  -- namespaceFor (ChainDB.TraceOpenEvent ev) =
-  --   nsPrependInner "OpenEvent" (namespaceFor ev)
-  -- namespaceFor (ChainDB.TraceIteratorEvent ev) =
-  --   nsPrependInner "IteratorEvent" (namespaceFor ev)
-  -- namespaceFor (ChainDB.TraceLedgerEvent ev) =
-  --   nsPrependInner "LedgerEvent" (namespaceFor ev)
-  -- namespaceFor (ChainDB.TraceLedgerReplayEvent ev) =
-  --   nsPrependInner "LedgerReplay" (namespaceFor ev)
-  -- namespaceFor (ChainDB.TraceImmutableDBEvent ev) =
-  --   nsPrependInner "ImmDbEvent" (namespaceFor ev)
-  -- namespaceFor (ChainDB.TraceVolatileDBEvent ev) =
-  --   nsPrependInner "VolatileDbEvent" (namespaceFor ev)
-
-
-  -- severityFor (Namespace out ("FollowerEvent" : tl)) o =
-  --   severityFor (Namespace out tl) o
-
-
-
 
 sevLedgerEvent :: LedgerEvent blk -> SeverityS
 sevLedgerEvent (LedgerUpdate _)  = Notice
 sevLedgerEvent (LedgerWarning _) = Critical
-
-
-
-
-
-
-
 
 showProgressT :: Int -> Int -> Text
 showProgressT chunkNo outOf =
@@ -1462,507 +2060,6 @@ fragmentChainDensity frag = calcDensity blockD slotD
       -- don't let it contribute to the number of blocks
       Right 0 -> 1
       Right b -> b
-
--- --------------------------------------------------------------------------------
--- -- FollowerEvent
--- --------------------------------------------------------------------------------
-
-
-
-
-
--- --------------------------------------------------------------------------------
--- -- LedgerReplayEvent
--- --------------------------------------------------------------------------------
-
--- sevTraceLedgerReplayEvent :: LedgerDB.TraceReplayEvent blk -> SeverityS
--- sevTraceLedgerReplayEvent LedgerDB.ReplayFromGenesis {}  = Info
--- sevTraceLedgerReplayEvent LedgerDB.ReplayFromSnapshot {} = Info
--- sevTraceLedgerReplayEvent LedgerDB.ReplayedBlock {}      = Info
-
--- namesForChainDBLedgerReplayEvent :: LedgerDB.TraceReplayEvent blk -> [Text]
--- namesForChainDBLedgerReplayEvent (LedgerDB.ReplayFromGenesis {}) =
---     ["ReplayFromGenesis"]
--- namesForChainDBLedgerReplayEvent (LedgerDB.ReplayFromSnapshot {}) =
---     ["ReplayFromSnapshot"]
--- namesForChainDBLedgerReplayEvent (LedgerDB.ReplayedBlock {}) =
---     ["ReplayedBlock"]
-
-instance (StandardHash blk, ConvertRawHash blk)
-          => LogFormatting (LedgerDB.TraceReplayEvent blk) where
-  forHuman (LedgerDB.ReplayFromGenesis _replayTo) =
-      "Replaying ledger from genesis"
-  forHuman (LedgerDB.ReplayFromSnapshot snap tip' _ _) =
-      "Replaying ledger from snapshot " <> showT snap <> " at " <>
-        renderRealPointAsPhrase tip'
-  forHuman (LedgerDB.ReplayedBlock
-              pt
-              _ledgerEvents
-              (LedgerDB.ReplayStart replayFrom)
-              (LedgerDB.ReplayGoal replayTo)) =
-          let fromSlot = withOrigin 0 id $ unSlotNo <$> pointSlot replayFrom
-              atSlot   = unSlotNo $ realPointSlot pt
-              atDiff   = atSlot - fromSlot
-              toSlot   = withOrigin 0 id $ unSlotNo <$> pointSlot replayTo
-              toDiff   = toSlot - fromSlot
-          in
-             "Replayed block: slot "
-          <> showT atSlot
-          <> " out of "
-          <> showT toSlot
-          <> ". Progress: "
-          <> showProgressT (fromIntegral atDiff) (fromIntegral toDiff)
-          <> "%"
-
-  forMachine _dtal (LedgerDB.ReplayFromGenesis _replayTo) =
-      mconcat [ "kind" .= String "ReplayFromGenesis" ]
-  forMachine dtal (LedgerDB.ReplayFromSnapshot snap tip' _ _) =
-      mconcat [ "kind" .= String "ReplayFromSnapshot"
-               , "snapshot" .= forMachine dtal snap
-               , "tip" .= show tip' ]
-  forMachine _dtal (LedgerDB.ReplayedBlock
-                      pt
-                      _ledgerEvents
-                      _
-                      (LedgerDB.ReplayGoal replayTo)) =
-      mconcat [ "kind" .= String "ReplayedBlock"
-               , "slot" .= unSlotNo (realPointSlot pt)
-               , "tip"  .= withOrigin 0 unSlotNo (pointSlot replayTo) ]
-
-
--- docChainDBLedgerReplayEvent :: Documented (ChainDB.TraceReplayEvent ev)
--- docChainDBLedgerReplayEvent = Documented [
---       DocMsg
---       ["ReplayFromGenesis"]
---       []
---       "There were no LedgerDB snapshots on disk, so we're replaying all\
---       \ blocks starting from Genesis against the initial ledger.\
---       \ The @replayTo@ parameter corresponds to the block at the tip of the\
---       \ ImmDB, i.e., the last block to replay."
---     , DocMsg
---       ["ReplayFromSnapshot"]
---       []
---       "There was a LedgerDB snapshot on disk corresponding to the given tip.\
---       \ We're replaying more recent blocks against it.\
---       \ The @replayTo@ parameter corresponds to the block at the tip of the\
---       \ ImmDB, i.e., the last block to replay."
---     , DocMsg
---       ["ReplayedBlock"]
---       []
---       "We replayed the given block (reference) on the genesis snapshot\
---       \ during the initialisation of the LedgerDB.\
---       \\n\
---       \ The @blockInfo@ parameter corresponds replayed block and the @replayTo@\
---       \ parameter corresponds to the block at the tip of the ImmDB, i.e.,\
---       \ the last block to replay."
---     ]
-
--- --------------------------------------------------------------------------------
--- -- TraceImmutableDBEvent
--- --------------------------------------------------------------------------------
-
--- sevTraceImmutableDBEvent :: ImmDB.TraceEvent blk -> SeverityS
--- sevTraceImmutableDBEvent ImmDB.NoValidLastLocation {} = Info
--- sevTraceImmutableDBEvent ImmDB.ValidatedLastLocation {} = Info
--- sevTraceImmutableDBEvent (ImmDB.ChunkValidationEvent ev') =
---   case ev' of
---       ImmDB.StartedValidatingChunk{} -> Info
---       ImmDB.ValidatedChunk{}         -> Info
---       ImmDB.MissingChunkFile{}       -> Warning
---       ImmDB.InvalidChunkFile {}      -> Warning
---       ImmDB.MissingPrimaryIndex{}    -> Warning
---       ImmDB.MissingSecondaryIndex{}  -> Warning
---       ImmDB.InvalidPrimaryIndex{}    -> Warning
---       ImmDB.InvalidSecondaryIndex{}  -> Warning
---       ImmDB.RewritePrimaryIndex{}    -> Warning
---       ImmDB.RewriteSecondaryIndex{}  -> Warning
--- sevTraceImmutableDBEvent ImmDB.ChunkFileDoesntFit{} = Warning
--- sevTraceImmutableDBEvent ImmDB.Migrating{}          = Debug
--- sevTraceImmutableDBEvent ImmDB.DeletingAfter{}      = Debug
--- sevTraceImmutableDBEvent ImmDB.DBAlreadyClosed{}    = Error
--- sevTraceImmutableDBEvent ImmDB.DBClosed{}           = Info
--- sevTraceImmutableDBEvent ImmDB.TraceCacheEvent{}    = Debug
-
--- namesForChainDBImmutableDBEvent :: ImmDB.TraceEvent blk -> [Text]
--- namesForChainDBImmutableDBEvent ImmDB.NoValidLastLocation =
---     ["NoValidLastLocation"]
--- namesForChainDBImmutableDBEvent (ImmDB.ValidatedLastLocation {}) =
---     ["ValidatedLastLocation"]
--- namesForChainDBImmutableDBEvent (ImmDB.ChunkFileDoesntFit {}) =
---     ["ChunkFileDoesntFit"]
--- namesForChainDBImmutableDBEvent (ImmDB.Migrating {}) =
---     ["Migrating"]
--- namesForChainDBImmutableDBEvent (ImmDB.DeletingAfter {}) =
---     ["DeletingAfter"]
--- namesForChainDBImmutableDBEvent ImmDB.DBAlreadyClosed =
---     ["DBAlreadyClosed"]
--- namesForChainDBImmutableDBEvent ImmDB.DBClosed =
---     ["DBClosed"]
-
--- namesForChainDBImmutableDBEvent (ImmDB.ChunkValidationEvent ev) =
---     "ChunkValidation" : namesForChainDBImmutableChunkValidation ev
--- namesForChainDBImmutableDBEvent (ImmDB.TraceCacheEvent ev') =
---     "CacheEvent" : namesForChainDBImmutableDBCacheEvent ev'
-
--- namesForChainDBImmutableChunkValidation ::
---      ImmDB.TraceChunkValidation blk ImmDB.ChunkNo
---   -> [Text]
--- namesForChainDBImmutableChunkValidation (ImmDB.StartedValidatingChunk {}) =
---     ["StartedValidatingChunk"]
--- namesForChainDBImmutableChunkValidation (ImmDB.ValidatedChunk {}) =
---     ["ValidatedChunk"]
--- namesForChainDBImmutableChunkValidation (ImmDB.MissingChunkFile {}) =
---     ["MissingChunkFile"]
--- namesForChainDBImmutableChunkValidation (ImmDB.InvalidChunkFile {}) =
---     ["InvalidChunkFile"]
--- namesForChainDBImmutableChunkValidation (ImmDB.MissingPrimaryIndex {}) =
---     ["MissingPrimaryIndex"]
--- namesForChainDBImmutableChunkValidation (ImmDB.MissingSecondaryIndex {}) =
---     ["MissingSecondaryIndex"]
--- namesForChainDBImmutableChunkValidation (ImmDB.InvalidPrimaryIndex {}) =
---     ["InvalidPrimaryIndex"]
--- namesForChainDBImmutableChunkValidation (ImmDB.InvalidSecondaryIndex {}) =
---     ["InvalidSecondaryIndex"]
--- namesForChainDBImmutableChunkValidation (ImmDB.RewritePrimaryIndex {}) =
---     ["RewritePrimaryIndex"]
--- namesForChainDBImmutableChunkValidation (ImmDB.RewriteSecondaryIndex {}) =
---     ["RewriteSecondaryIndex"]
-
-
--- namesForChainDBImmutableDBCacheEvent :: ImmDB.TraceCacheEvent -> [Text]
--- namesForChainDBImmutableDBCacheEvent (ImmDB.TraceCurrentChunkHit {}) =
---     ["CurrentChunkHit"]
--- namesForChainDBImmutableDBCacheEvent (ImmDB.TracePastChunkHit {}) =
---     ["PastChunkHit"]
--- namesForChainDBImmutableDBCacheEvent (ImmDB.TracePastChunkMiss {}) =
---     ["PastChunkMiss"]
--- namesForChainDBImmutableDBCacheEvent (ImmDB.TracePastChunkEvict {}) =
---     ["PastChunkEvict"]
--- namesForChainDBImmutableDBCacheEvent (ImmDB.TracePastChunksExpired {}) =
---     ["PastChunkExpired"]
-
-instance (ConvertRawHash blk, StandardHash blk)
-  => LogFormatting (ImmDB.TraceEvent blk) where
-    forMachine _dtal ImmDB.NoValidLastLocation =
-      mconcat [ "kind" .= String "NoValidLastLocation" ]
-    forMachine _dtal (ImmDB.ValidatedLastLocation chunkNo immTip) =
-      mconcat [ "kind" .= String "ValidatedLastLocation"
-               , "chunkNo" .= String (renderChunkNo chunkNo)
-               , "immTip" .= String (renderTipHash immTip)
-               , "blockNo" .= String (renderTipBlockNo immTip)
-               ]
-    forMachine dtal (ImmDB.ChunkValidationEvent traceChunkValidation) =
-      forMachine dtal traceChunkValidation
-    forMachine _dtal (ImmDB.DeletingAfter immTipWithInfo) =
-      mconcat [ "kind" .= String "DeletingAfter"
-               , "immTipHash" .= String (renderWithOrigin renderTipHash immTipWithInfo)
-               , "immTipBlockNo" .= String (renderWithOrigin renderTipBlockNo immTipWithInfo)
-               ]
-    forMachine _dtal ImmDB.DBAlreadyClosed =
-      mconcat [ "kind" .= String "DBAlreadyClosed" ]
-    forMachine _dtal ImmDB.DBClosed =
-      mconcat [ "kind" .= String "DBClosed" ]
-    forMachine dtal (ImmDB.TraceCacheEvent cacheEv) =
-      kindContext "TraceCacheEvent" $ forMachine dtal cacheEv
-    forMachine _dtal (ImmDB.ChunkFileDoesntFit expectPrevHash actualPrevHash) =
-      mconcat [ "kind" .= String "ChunkFileDoesntFit"
-               , "expectedPrevHash" .= String (renderChainHash (Text.decodeLatin1 .
-                                              toRawHash (Proxy @blk)) expectPrevHash)
-               , "actualPrevHash" .= String (renderChainHash (Text.decodeLatin1 .
-                                              toRawHash (Proxy @blk)) actualPrevHash)
-               ]
-    forMachine _dtal (ImmDB.Migrating txt) =
-      mconcat [ "kind" .= String "Migrating"
-               , "info" .= String txt
-               ]
-
-    forHuman ImmDB.NoValidLastLocation =
-          "No valid last location was found. Starting from Genesis."
-    forHuman (ImmDB.ValidatedLastLocation cn t) =
-            "Found a valid last location at chunk "
-          <> showT cn
-          <> " with tip "
-          <> renderRealPoint (ImmDB.tipToRealPoint t)
-          <> "."
-    forHuman (ImmDB.ChunkValidationEvent e) = case e of
-          ImmDB.StartedValidatingChunk chunkNo outOf ->
-               "Validating chunk no. " <> showT chunkNo <> " out of " <> showT outOf
-            <> ". Progress: " <> showProgressT (max (chunkNoToInt chunkNo - 1) 0) (chunkNoToInt outOf) <> "%"
-          ImmDB.ValidatedChunk chunkNo outOf ->
-               "Validated chunk no. " <> showT chunkNo <> " out of " <> showT outOf
-            <> ". Progress: " <> showProgressT (chunkNoToInt chunkNo) (chunkNoToInt outOf) <> "%"
-          ImmDB.MissingChunkFile cn      ->
-            "The chunk file with number " <> showT cn <> " is missing."
-          ImmDB.InvalidChunkFile cn er    ->
-            "The chunk file with number " <> showT cn <> " is invalid: " <> showT er
-          ImmDB.MissingPrimaryIndex cn   ->
-            "The primary index of the chunk file with number " <> showT cn <> " is missing."
-          ImmDB.MissingSecondaryIndex cn ->
-            "The secondary index of the chunk file with number " <> showT cn <> " is missing."
-          ImmDB.InvalidPrimaryIndex cn   ->
-            "The primary index of the chunk file with number " <> showT cn <> " is invalid."
-          ImmDB.InvalidSecondaryIndex cn ->
-            "The secondary index of the chunk file with number " <> showT cn <> " is invalid."
-          ImmDB.RewritePrimaryIndex cn   ->
-            "Rewriting the primary index for the chunk file with number " <> showT cn <> "."
-          ImmDB.RewriteSecondaryIndex cn ->
-            "Rewriting the secondary index for the chunk file with number " <> showT cn <> "."
-    forHuman (ImmDB.ChunkFileDoesntFit ch1 ch2 ) =
-          "Chunk file doesn't fit. The hash of the block " <> showT ch2 <> " doesn't match the previous hash of the first block in the current epoch: " <> showT ch1 <> "."
-    forHuman (ImmDB.Migrating t) = "Migrating: " <> t
-    forHuman (ImmDB.DeletingAfter wot) = "Deleting chunk files after " <> showT wot
-    forHuman ImmDB.DBAlreadyClosed {} = "Immutable DB was already closed. Double closing."
-    forHuman ImmDB.DBClosed {} = "Closed Immutable DB."
-    forHuman (ImmDB.TraceCacheEvent ev') = "Cache event: " <> case ev' of
-          ImmDB.TraceCurrentChunkHit   cn   curr -> "Current chunk hit: " <> showT cn <> ", cache size: " <> showT curr
-          ImmDB.TracePastChunkHit      cn   curr -> "Past chunk hit: " <> showT cn <> ", cache size: " <> showT curr
-          ImmDB.TracePastChunkMiss     cn   curr -> "Past chunk miss: " <> showT cn <> ", cache size: " <> showT curr
-          ImmDB.TracePastChunkEvict    cn   curr -> "Past chunk evict: " <> showT cn <> ", cache size: " <> showT curr
-          ImmDB.TracePastChunksExpired cns  curr -> "Past chunks expired: " <> showT cns <> ", cache size: " <> showT curr
-
-instance ConvertRawHash blk => LogFormatting (ImmDB.TraceChunkValidation blk ImmDB.ChunkNo) where
-    forMachine _dtal (ImmDB.RewriteSecondaryIndex chunkNo) =
-        mconcat [ "kind" .= String "TraceImmutableDBEvent.RewriteSecondaryIndex"
-                 , "chunkNo" .= String (renderChunkNo chunkNo)
-                 ]
-    forMachine _dtal (ImmDB.RewritePrimaryIndex chunkNo) =
-        mconcat [ "kind" .= String "TraceImmutableDBEvent.RewritePrimaryIndex"
-                 , "chunkNo" .= String (renderChunkNo chunkNo)
-                 ]
-    forMachine _dtal (ImmDB.MissingPrimaryIndex chunkNo) =
-        mconcat [ "kind" .= String "TraceImmutableDBEvent.MissingPrimaryIndex"
-                 , "chunkNo" .= String (renderChunkNo chunkNo)
-                 ]
-    forMachine _dtal (ImmDB.MissingSecondaryIndex chunkNo) =
-        mconcat [ "kind" .= String "TraceImmutableDBEvent.MissingSecondaryIndex"
-                 , "chunkNo" .= String (renderChunkNo chunkNo)
-                 ]
-    forMachine _dtal (ImmDB.InvalidPrimaryIndex chunkNo) =
-        mconcat [ "kind" .= String "TraceImmutableDBEvent.InvalidPrimaryIndex"
-                 , "chunkNo" .= String (renderChunkNo chunkNo)
-                 ]
-    forMachine _dtal (ImmDB.InvalidSecondaryIndex chunkNo) =
-        mconcat [ "kind" .= String "TraceImmutableDBEvent.InvalidSecondaryIndex"
-                 , "chunkNo" .= String (renderChunkNo chunkNo)
-                 ]
-    forMachine _dtal (ImmDB.InvalidChunkFile chunkNo
-                      (ImmDB.ChunkErrHashMismatch hashPrevBlock prevHashOfBlock)) =
-        mconcat [ "kind" .= String "TraceImmutableDBEvent.InvalidChunkFile.ChunkErrHashMismatch"
-                 , "chunkNo" .= String (renderChunkNo chunkNo)
-                 , "hashPrevBlock" .= String (Text.decodeLatin1 . toRawHash (Proxy @blk) $ hashPrevBlock)
-                 , "prevHashOfBlock" .= String (renderChainHash (Text.decodeLatin1 . toRawHash (Proxy @blk)) prevHashOfBlock)
-                 ]
-    forMachine dtal (ImmDB.InvalidChunkFile chunkNo (ImmDB.ChunkErrCorrupt pt)) =
-        mconcat [ "kind" .= String "TraceImmutableDBEvent.InvalidChunkFile.ChunkErrCorrupt"
-                 , "chunkNo" .= String (renderChunkNo chunkNo)
-                 , "block" .= String (renderPointForDetails dtal pt)
-                 ]
-    forMachine _dtal (ImmDB.ValidatedChunk chunkNo _) =
-        mconcat [ "kind" .= String "TraceImmutableDBEvent.ValidatedChunk"
-                 , "chunkNo" .= String (renderChunkNo chunkNo)
-                 ]
-    forMachine _dtal (ImmDB.MissingChunkFile chunkNo) =
-        mconcat [ "kind" .= String "TraceImmutableDBEvent.MissingChunkFile"
-                 , "chunkNo" .= String (renderChunkNo chunkNo)
-                 ]
-    forMachine _dtal (ImmDB.InvalidChunkFile chunkNo (ImmDB.ChunkErrRead readIncErr)) =
-        mconcat [ "kind" .= String "TraceImmutableDBEvent.InvalidChunkFile.ChunkErrRead"
-                 , "chunkNo" .= String (renderChunkNo chunkNo)
-                 , "error" .= String (showT readIncErr)
-                 ]
-    forMachine _dtal (ImmDB.StartedValidatingChunk initialChunk finalChunk) =
-        mconcat [ "kind" .= String "TraceImmutableDBEvent.StartedValidatingChunk"
-                 , "initialChunk" .= renderChunkNo initialChunk
-                 , "finalChunk" .= renderChunkNo finalChunk
-                 ]
-
-instance LogFormatting ImmDB.TraceCacheEvent where
-    forMachine _dtal (ImmDB.TraceCurrentChunkHit chunkNo nbPastChunksInCache) =
-          mconcat [ "kind" .= String "TraceCurrentChunkHit"
-                   , "chunkNo" .= String (renderChunkNo chunkNo)
-                   , "noPastChunks" .= String (showT nbPastChunksInCache)
-                   ]
-    forMachine _dtal (ImmDB.TracePastChunkHit chunkNo nbPastChunksInCache) =
-          mconcat [ "kind" .= String "TracePastChunkHit"
-                   , "chunkNo" .= String (renderChunkNo chunkNo)
-                   , "noPastChunks" .= String (showT nbPastChunksInCache)
-                   ]
-    forMachine _dtal (ImmDB.TracePastChunkMiss chunkNo nbPastChunksInCache) =
-          mconcat [ "kind" .= String "TracePastChunkMiss"
-                   , "chunkNo" .= String (renderChunkNo chunkNo)
-                   , "noPastChunks" .= String (showT nbPastChunksInCache)
-                   ]
-    forMachine _dtal (ImmDB.TracePastChunkEvict chunkNo nbPastChunksInCache) =
-          mconcat [ "kind" .= String "TracePastChunkEvict"
-                   , "chunkNo" .= String (renderChunkNo chunkNo)
-                   , "noPastChunks" .= String (showT nbPastChunksInCache)
-                   ]
-    forMachine _dtal (ImmDB.TracePastChunksExpired chunkNos nbPastChunksInCache) =
-          mconcat [ "kind" .= String "TracePastChunksExpired"
-                   , "chunkNos" .= String (Text.pack . show $ map renderChunkNo chunkNos)
-                   , "noPastChunks" .= String (showT nbPastChunksInCache)
-                   ]
-
--- docChainDBImmutableDBEvent :: Documented (ImmDB.TraceEvent blk)
--- docChainDBImmutableDBEvent = Documented [
---       DocMsg
---       ["NoValidLastLocation"]
---       []
---       "No valid last location was found"
---     , DocMsg
---       ["ValidatedLastLocation"]
---       []
---       "The last location was validatet"
---     , DocMsg
---       ["ChunkFileDoesntFit"]
---       []
---       "The hash of the last block in the previous epoch doesn't match the\
---       \ previous hash of the first block in the current epoch"
---     , DocMsg
---       ["Migrating"]
---       []
---       "Performing a migration of the on-disk files."
---     , DocMsg
---       ["DeletingAfter"]
---       []
---       "Delete after"
---     , DocMsg
---       ["DBAlreadyClosed"]
---       []
---       "The immutable DB is already closed"
---     , DocMsg
---       ["DBClosed"]
---       []
---       "Closing the immutable DB"
---     ]
---     `addDocs` addDocumentedNamespace ["ChunkValidation"] docChainDBImmutableDBChunkValidation
---     `addDocs` addDocumentedNamespace ["CacheEvent"]  docChainDBImmutableDBCacheEvent
-
--- docChainDBImmutableDBChunkValidation ::
---      Documented (ImmDB.TraceChunkValidation blk ImmDB.ChunkNo)
--- docChainDBImmutableDBChunkValidation = Documented [
---       DocMsg
---       ["StartedValidatingChunk"]
---       []
---       ""
---     , DocMsg
---       ["ValidatedChunk"]
---       []
---       ""
---     , DocMsg
---       ["MissingChunkFile"]
---       []
---       "Chunk file is missing"
---     , DocMsg
---       ["InvalidChunkFile"]
---       []
---       "Chunk file is invalid"
---     , DocMsg
---       ["MissingPrimaryIndex"]
---       []
---       "The primary index is missing."
---     , DocMsg
---       ["MissingSecondaryIndex"]
---       []
---       "The secondary index is missing."
---     , DocMsg
---       ["InvalidPrimaryIndex"]
---       []
---       "The primary index is invalid."
---     , DocMsg
---       ["InvalidSecondaryIndex"]
---       []
---       ""
---     , DocMsg
---       ["RewritePrimaryIndex"]
---       []
---       ""
---     , DocMsg
---       ["RewriteSecondaryIndex"]
---       []
---       ""
---     ]
-
--- docChainDBImmutableDBCacheEvent :: Documented ImmDB.TraceCacheEvent
--- docChainDBImmutableDBCacheEvent = Documented [
---       DocMsg
---       ["CurrentChunkHit"]
---       []
---       "Current chunk found in the cache."
---     , DocMsg
---       ["PastChunkHit"]
---       []
---       "Past chunk found in the cache"
---     , DocMsg
---       ["PastChunkMiss"]
---       []
---       "Past chunk was not found in the cache"
---     , DocMsg
---       ["PastChunkEvict"]
---       []
---       "The least recently used past chunk was evicted because the cache\
---       \ was full."
---     , DocMsg
---       ["PastChunkExpired"]
---       []
---       ""
---   ]
-
--- --------------------------------------------------------------------------------
--- -- VolatileDBEvent
--- --------------------------------------------------------------------------------
-
--- sevTraceVolatileDBEvent :: VolDB.TraceEvent blk -> SeverityS
--- sevTraceVolatileDBEvent _ = Debug
-
--- namesForChainDBVolatileDBEvent :: VolDB.TraceEvent blk -> [Text]
--- namesForChainDBVolatileDBEvent VolDb.DBAlreadyClosed =
---     ["DBAlreadyClosed"]
--- namesForChainDBVolatileDBEvent (VolDb.Truncate {}) =
---     ["Truncate"]
--- namesForChainDBVolatileDBEvent (VolDb.InvalidFileNames {}) =
---     ["InvalidFileNames"]
--- namesForChainDBVolatileDBEvent (VolDb.BlockAlreadyHere {}) =
---     ["BlockAlreadyHere"]
-
-
-instance StandardHash blk => LogFormatting (VolDB.TraceEvent blk) where
-    forMachine _dtal VolDB.DBAlreadyClosed =
-      mconcat [ "kind" .= String "DBAlreadyClosed"]
-    forMachine _dtal (VolDB.BlockAlreadyHere blockId) =
-      mconcat [ "kind" .= String "BlockAlreadyHere"
-               , "blockId" .= String (showT blockId)
-               ]
-    forMachine _dtal (VolDB.Truncate pErr fsPath blockOffset) =
-      mconcat [ "kind" .= String "Truncate"
-               , "parserError" .= String (showT pErr)
-               , "file" .= String (showT fsPath)
-               , "blockOffset" .= String (showT blockOffset)
-               ]
-    forMachine _dtal (VolDB.InvalidFileNames fsPaths) =
-      mconcat [ "kind" .= String "InvalidFileNames"
-               , "files" .= String (Text.pack . show $ map show fsPaths)
-               ]
-
--- docChainDBVolatileDBEvent :: Documented (VolDB.TraceEvent blk)
--- docChainDBVolatileDBEvent = Documented [
---       DocMsg
---       ["DBAlreadyClosed"]
---       []
---       "When closing the DB it was found itis closed already."
---     , DocMsg
---       ["Truncate"]
---       []
---       "Truncates a file up to offset because of the error."
---     , DocMsg
---       ["InvalidFileNames"]
---       []
---       "Reports a list of invalid file paths."
---     , DocMsg
---       ["BlockAlreadyHere"]
---       []
---       "A block was found to be already in the DB."
---   ]
 
 -- --------------------------------------------------------------------------------
 -- -- Other orophans

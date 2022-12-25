@@ -131,10 +131,7 @@ mkDispatchTracers nodeKernel trBase trForward mbTrEKG trDataPoint trConfig enabl
 --     replayBlockTr <- mkCardanoTracer
 --                 trBase trForward mbTrEKG
 --                 ["ChainDB", "ReplayBlock"]
---                 namesForReplayBlockStats
---                 severityReplayBlockStats
---                 allPublic
---     configureTracers trConfig docReplayedBlock [replayBlockTr]
+--     configureTracers trConfig [replayBlockTr]
 
 --     -- This tracer handles replayed blocks specially
 --     replayBlockTr' <- withReplayedBlock replayBlockTr
