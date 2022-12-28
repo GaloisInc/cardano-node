@@ -142,7 +142,7 @@ instance MetaTrace ResourceStats where
   severityFor _ns _ = Nothing
   documentFor  (Namespace _ ["NodeInfo"]) = Just ""
   documentFor _ns = Nothing
-  metricsDocFor  (Namespace _ ["Resources"]) = Just
+  metricsDocFor  (Namespace _ ["Resources"]) =
     [("Resources.Stat.Cputicks", "Kernel-reported CPU ticks (1/100th of a second), since process start")
     ,("Resources.Mem.Resident", "Kernel-reported RSS (resident set size)")
     ,("Resources.RTS.GcLiveBytes", "RTS-reported live bytes")
@@ -156,6 +156,6 @@ instance MetaTrace ResourceStats where
     ,("Resources.State.FsWr", "FS bytes written")
     ,("Resources.RTS.Threads","RTS green thread count")
     ]
-  metricsDocFor _ns = Nothing
+  metricsDocFor _ns = []
   allNamespaces = [ Namespace [] ["Resources"]]
 
