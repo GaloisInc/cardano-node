@@ -13,7 +13,7 @@ module Cardano.Node.Tracing.Tracers.Peer where
 --   ) where
 
 import           Cardano.Prelude hiding (atomically)
-import           Prelude (error, String)
+import           Prelude (String)
 
 import qualified Control.Concurrent.Class.MonadSTM.Strict as STM
 import           "contra-tracer" Control.Tracer
@@ -151,7 +151,6 @@ instance MetaTrace [PeerT blk] where
   documentFor _ns =
     Nothing
   metricsDocFor (Namespace _ ["PeersFromNodeKernel"]) =
-    Just [("Net.PeersFromNodeKernel","")]
-  metricsDocFor _ns =
-    Nothing
+    [("Net.PeersFromNodeKernel","")]
+  metricsDocFor _ns = []
   allNamespaces = [ Namespace [] ["PeersFromNodeKernel"]]

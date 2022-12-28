@@ -248,8 +248,8 @@ readTopologyFile tr nc = do
           -> IO (Either Text NetworkTopology)
   combine a b = case (a, b) of
     (Right {}, _)     -> return a
-    (_, Right {})     -> return a -- TODO YUP traceWith tr NetworkConfigLegacy
-                      >> return (getLegacy <$> b)
+    (_, Right {})     -> traceWith tr NetworkConfigLegacy
+                           >> return (getLegacy <$> b)
     (Left _, Left _)  -> -- ignore parsing error of legacy format
                          return a
 

@@ -338,10 +338,6 @@ instance MetaTrace  (StartupTrace blk) where
       \\n_niIpProducers_: shows the list of ip subscription addresses."
   documentFor _ns = Nothing
 
-  metricsDocFor _ = Just
-    [("Net.PeersFromNodeKernel","")]
-  metricsDocFor ns = Nothing
-
   allNamespaces =
     [ Namespace [] ["Info"]
     , Namespace [] ["P2PInfo"]

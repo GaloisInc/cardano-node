@@ -26,7 +26,6 @@ import qualified Data.Text as Text
 
 import           Cardano.Node.Configuration.NodeAddress
 import           Cardano.Node.Configuration.POM (NodeConfiguration (..))
-import           Cardano.Node.Startup (StartupTrace)
 import           Cardano.Node.Types
 
 import           Ouroboros.Consensus.Util.Condense (Condense (..))

@@ -8,7 +8,6 @@ module Cardano.Node.Tracing.Peers
 
 import           Cardano.Prelude
 import           Data.Aeson (FromJSON, ToJSON)
-import           Prelude (error)
 
 import           Cardano.Logging
 

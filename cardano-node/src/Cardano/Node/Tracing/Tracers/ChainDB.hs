@@ -29,6 +29,7 @@ import           Cardano.Prelude hiding (Show, show, trace)
 import           Ouroboros.Consensus.Block
 import           Ouroboros.Consensus.Ledger.Inspect (InspectLedger, LedgerEvent (..))
 import           Ouroboros.Consensus.Ledger.SupportsProtocol (LedgerSupportsProtocol)
+import qualified Ouroboros.Consensus.Protocol.PBFT as PBFT
 import qualified Ouroboros.Consensus.Storage.ChainDB as ChainDB
 import qualified Ouroboros.Consensus.Storage.ImmutableDB as ImmDB
 import           Ouroboros.Consensus.Storage.ImmutableDB.Chunks.Internal (chunkNoToInt)
@@ -193,35 +194,35 @@ instance MetaTrace  (ChainDB.TraceEvent blk) where
   privacyFor (Namespace out ("AddBlockEvent" : tl)) (Just (ChainDB.TraceAddBlockEvent ev')) =
     privacyFor (Namespace out tl) (Just ev')
   privacyFor (Namespace out ("AddBlockEvent" : tl)) Nothing =
-    privacyFor (Namespace out tl :: Namespace ((ChainDB.TraceAddBlockEvent blk))) Nothing
+    privacyFor (Namespace out tl :: Namespace (ChainDB.TraceAddBlockEvent blk)) Nothing
   privacyFor (Namespace out ("FollowerEvent" : tl)) (Just (ChainDB.TraceFollowerEvent ev')) =
     privacyFor (Namespace out tl) (Just ev')
   privacyFor (Namespace out ("FollowerEvent" : tl)) Nothing =
-    privacyFor (Namespace out tl :: Namespace ((ChainDB.TraceFollowerEvent blk))) Nothing
+    privacyFor (Namespace out tl :: Namespace (ChainDB.TraceFollowerEvent blk)) Nothing
   privacyFor (Namespace out ("CopyToImmutableDBEvent" : tl)) (Just (ChainDB.TraceCopyToImmutableDBEvent ev')) =
     privacyFor (Namespace out tl) (Just ev')
   privacyFor (Namespace out ("CopyToImmutableDBEvent" : tl)) Nothing =
-    privacyFor (Namespace out tl :: Namespace ((ChainDB.TraceCopyToImmutableDBEvent blk))) Nothing
+    privacyFor (Namespace out tl :: Namespace (ChainDB.TraceCopyToImmutableDBEvent blk)) Nothing
   privacyFor (Namespace out ("GCEvent" : tl)) (Just (ChainDB.TraceGCEvent ev')) =
     privacyFor (Namespace out tl) (Just ev')
   privacyFor (Namespace out ("GCEvent" : tl)) Nothing =
-    privacyFor (Namespace out tl :: Namespace ((ChainDB.TraceGCEvent blk))) Nothing
+    privacyFor (Namespace out tl :: Namespace (ChainDB.TraceGCEvent blk)) Nothing
   privacyFor (Namespace out ("InitChainSelEvent" : tl)) (Just (ChainDB.TraceInitChainSelEvent ev')) =
     privacyFor (Namespace out tl) (Just ev')
   privacyFor (Namespace out ("InitChainSelEvent" : tl)) Nothing =
-    privacyFor (Namespace out tl :: Namespace ((ChainDB.TraceInitChainSelEvent blk))) Nothing
+    privacyFor (Namespace out tl :: Namespace (ChainDB.TraceInitChainSelEvent blk)) Nothing
   privacyFor (Namespace out ("OpenEvent" : tl)) (Just (ChainDB.TraceOpenEvent ev')) =
     privacyFor (Namespace out tl) (Just ev')
   privacyFor (Namespace out ("OpenEvent" : tl)) Nothing =
-    privacyFor (Namespace out tl :: Namespace ((ChainDB.TraceOpenEvent blk))) Nothing
+    privacyFor (Namespace out tl :: Namespace (ChainDB.TraceOpenEvent blk)) Nothing
   privacyFor (Namespace out ("IteratorEvent" : tl)) (Just (ChainDB.TraceIteratorEvent ev')) =
     privacyFor (Namespace out tl) (Just ev')
   privacyFor (Namespace out ("IteratorEvent" : tl)) Nothing =
-    privacyFor (Namespace out tl :: Namespace ((ChainDB.TraceIteratorEvent blk))) Nothing
+    privacyFor (Namespace out tl :: Namespace (ChainDB.TraceIteratorEvent blk)) Nothing
   privacyFor (Namespace out ("LedgerEvent" : tl)) (Just (ChainDB.TraceLedgerEvent ev')) =
     privacyFor (Namespace out tl) (Just ev')
   privacyFor (Namespace out ("LedgerEvent" : tl)) Nothing =
-    privacyFor (Namespace out tl :: Namespace ((LedgerDB.TraceEvent blk))) Nothing
+    privacyFor (Namespace out tl :: Namespace (LedgerDB.TraceEvent blk)) Nothing
   privacyFor (Namespace out ("LedgerReplayEvent" : tl)) (Just (ChainDB.TraceLedgerReplayEvent ev')) =
     privacyFor (Namespace out tl) (Just ev')
   privacyFor (Namespace out ("LedgerReplayEvent" : tl)) Nothing =
@@ -304,7 +305,7 @@ instance MetaTrace  (ChainDB.TraceEvent blk) where
     metricsDocFor (Namespace out tl :: Namespace (ImmDB.TraceEvent blk))
   metricsDocFor (Namespace out ("VolatileDbEvent" : tl)) =
     metricsDocFor (Namespace out tl :: Namespace (VolDB.TraceEvent blk))
-  metricsDocFor _ = Nothing
+  metricsDocFor _ = []
 
   documentFor (Namespace out ("AddBlockEvent" : tl)) =
     documentFor (Namespace out tl :: Namespace (ChainDB.TraceAddBlockEvent blk))
@@ -566,24 +567,24 @@ instance MetaTrace  (ChainDB.TraceAddBlockEvent blk) where
   privacyFor (Namespace out ("AddBlockEvent" : tl)) (Just (ChainDB.AddBlockValidation ev')) =
     privacyFor (Namespace out tl) (Just ev')
   privacyFor (Namespace out ("AddBlockEvent" : tl)) Nothing =
-    privacyFor (Namespace out tl :: Namespace ((ChainDB.TraceValidationEvent blk))) Nothing
+    privacyFor (Namespace out tl :: Namespace (ChainDB.TraceValidationEvent blk)) Nothing
   privacyFor (Namespace out ("PipeliningEvent" : tl)) (Just (ChainDB.PipeliningEvent ev')) =
     privacyFor (Namespace out tl) (Just ev')
   privacyFor (Namespace out ("PipeliningEvent" : tl)) Nothing =
-    privacyFor (Namespace out tl :: Namespace ((ChainDB.TracePipeliningEvent blk))) Nothing
+    privacyFor (Namespace out tl :: Namespace (ChainDB.TracePipeliningEvent blk)) Nothing
   privacyFor _ _ = Just Public
 
   detailsFor (Namespace out ("AddBlockEvent" : tl)) (Just (ChainDB.AddBlockValidation ev')) =
     detailsFor (Namespace out tl) (Just ev')
   detailsFor (Namespace out ("AddBlockEvent" : tl)) Nothing =
-    detailsFor (Namespace out tl :: Namespace ((ChainDB.TraceValidationEvent blk))) Nothing
+    detailsFor (Namespace out tl :: Namespace (ChainDB.TraceValidationEvent blk)) Nothing
   detailsFor (Namespace out ("PipeliningEvent" : tl)) (Just (ChainDB.PipeliningEvent ev')) =
     detailsFor (Namespace out tl) (Just ev')
   detailsFor (Namespace out ("PipeliningEvent" : tl)) Nothing =
-    detailsFor (Namespace out tl :: Namespace ((ChainDB.TracePipeliningEvent blk))) Nothing
+    detailsFor (Namespace out tl :: Namespace (ChainDB.TracePipeliningEvent blk)) Nothing
   detailsFor _ _ = Just DNormal
 
-  metricsDocFor (Namespace _ ["SwitchedToAFork"]) = Just
+  metricsDocFor (Namespace _ ["SwitchedToAFork"]) =
         [ ("ChainDB.Density",
           "The actual number of blocks created over the maximum expected number\
           \ of blocks that could be created over the span of the last @k@ blocks.")
@@ -597,7 +598,7 @@ instance MetaTrace  (ChainDB.TraceAddBlockEvent blk) where
         , ("ChainDB.Epoch",
           "In which epoch is the tip of the current chain.")
         ]
-  metricsDocFor (Namespace _ ["AddedToCurrentChain"]) = Just
+  metricsDocFor (Namespace _ ["AddedToCurrentChain"]) =
         [("ChainDB.Density",
           "The actual number of blocks created over the maximum expected number\
           \ of blocks that could be created over the span of the last @k@ blocks.")
@@ -611,7 +612,7 @@ instance MetaTrace  (ChainDB.TraceAddBlockEvent blk) where
         , ("ChainDB.Epoch",
           "In which epoch is the tip of the current chain.")
         ]
-  metricsDocFor _ = Just []
+  metricsDocFor _ = []
 
   documentFor (Namespace _ ["IgnoreBlockOlderThanK"]) = Just
     "A block with a 'BlockNo' more than @k@ back than the current tip\
@@ -948,7 +949,7 @@ instance MetaTrace (ChainDB.TraceInitChainSelEvent blk) where
 
   metricsDocFor (Namespace out ("InitChainSelValidation" : tl)) =
     metricsDocFor (Namespace out tl :: Namespace (ChainDB.TraceValidationEvent blk))
-  metricsDocFor _ = Just []
+  metricsDocFor _ = []
 
   documentFor (Namespace _ ["InitalChainSelected"]) = Just
     "A garbage collection for the given 'SlotNo' was performed."
@@ -1291,7 +1292,7 @@ instance MetaTrace (ChainDB.TraceIteratorEvent blk) where
       detailsFor (Namespace out tl) (Just ev')
     detailsFor (Namespace out ("UnknownRangeRequested" : tl)) Nothing =
       detailsFor (Namespace out tl ::
-        Namespace ((ChainDB.UnknownRange blk))) Nothing
+        Namespace (ChainDB.UnknownRange blk)) Nothing
     detailsFor _ _ = Just DNormal
 
     documentFor (Namespace out ("UnknownRangeRequested" : tl)) =
@@ -2048,41 +2049,41 @@ instance LogFormatting LedgerDB.DiskSnapshot where
 
 
 
--- instance (Show (PBFT.PBftVerKeyHash c))
---       => LogFormatting (PBFT.PBftValidationErr c) where
---   forMachine _dtal (PBFT.PBftInvalidSignature text) =
---     mconcat
---       [ "kind" .= String "PBftInvalidSignature"
---       , "error" .= String text
---       ]
---   forMachine _dtal (PBFT.PBftNotGenesisDelegate vkhash _ledgerView) =
---     mconcat
---       [ "kind" .= String "PBftNotGenesisDelegate"
---       , "vk" .= String (Text.pack $ show vkhash)
---       ]
---   forMachine _dtal (PBFT.PBftExceededSignThreshold vkhash numForged) =
---     mconcat
---       [ "kind" .= String "PBftExceededSignThreshold"
---       , "vk" .= String (Text.pack $ show vkhash)
---       , "numForged" .= String (Text.pack (show numForged))
---       ]
---   forMachine _dtal PBFT.PBftInvalidSlot =
---     mconcat
---       [ "kind" .= String "PBftInvalidSlot"
---       ]
+instance (Show (PBFT.PBftVerKeyHash c))
+      => LogFormatting (PBFT.PBftValidationErr c) where
+  forMachine _dtal (PBFT.PBftInvalidSignature text) =
+    mconcat
+      [ "kind" .= String "PBftInvalidSignature"
+      , "error" .= String text
+      ]
+  forMachine _dtal (PBFT.PBftNotGenesisDelegate vkhash _ledgerView) =
+    mconcat
+      [ "kind" .= String "PBftNotGenesisDelegate"
+      , "vk" .= String (Text.pack $ show vkhash)
+      ]
+  forMachine _dtal (PBFT.PBftExceededSignThreshold vkhash numForged) =
+    mconcat
+      [ "kind" .= String "PBftExceededSignThreshold"
+      , "vk" .= String (Text.pack $ show vkhash)
+      , "numForged" .= String (Text.pack (show numForged))
+      ]
+  forMachine _dtal PBFT.PBftInvalidSlot =
+    mconcat
+      [ "kind" .= String "PBftInvalidSlot"
+      ]
 
--- instance (Show (PBFT.PBftVerKeyHash c))
---       => LogFormatting (PBFT.PBftCannotForge c) where
---   forMachine _dtal (PBFT.PBftCannotForgeInvalidDelegation vkhash) =
---     mconcat
---       [ "kind" .= String "PBftCannotForgeInvalidDelegation"
---       , "vk" .= String (Text.pack $ show vkhash)
---       ]
---   forMachine _dtal (PBFT.PBftCannotForgeThresholdExceeded numForged) =
---     mconcat
---       [ "kind" .= String "PBftCannotForgeThresholdExceeded"
---       , "numForged" .= numForged
---       ]
+instance (Show (PBFT.PBftVerKeyHash c))
+      => LogFormatting (PBFT.PBftCannotForge c) where
+  forMachine _dtal (PBFT.PBftCannotForgeInvalidDelegation vkhash) =
+    mconcat
+      [ "kind" .= String "PBftCannotForgeInvalidDelegation"
+      , "vk" .= String (Text.pack $ show vkhash)
+      ]
+  forMachine _dtal (PBFT.PBftCannotForgeThresholdExceeded numForged) =
+    mconcat
+      [ "kind" .= String "PBftCannotForgeThresholdExceeded"
+      , "numForged" .= numForged
+      ]
 
 -- instance ( ConvertRawHash blk
 --          , StandardHash blk

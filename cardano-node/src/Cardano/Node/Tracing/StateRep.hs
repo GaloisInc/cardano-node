@@ -14,7 +14,7 @@ module Cardano.Node.Tracing.StateRep
   , OpeningDbs (..)
   , Replays (..)
   , StartupState (..)
-  --, traceNodeStateChainDB
+  , traceNodeStateChainDB
   , traceNodeStateStartup
   , traceNodeStateShutdown
   ) where
@@ -24,7 +24,6 @@ import           Cardano.Prelude
 import           Data.Aeson
 import           Data.Time.Clock
 import           Data.Time.Clock.POSIX
-import           Prelude (error)
 
 import           Cardano.Node.Protocol.Types (SomeConsensusProtocol (..))
 import qualified Ouroboros.Consensus.Block.RealPoint as RP
@@ -175,58 +174,58 @@ instance MetaTrace NodeState where
   allNamespaces = [ Namespace [] ["NodeStartupInfo"]]
 
 
--- traceNodeStateChainDB
---   :: SomeConsensusProtocol
---   -> Trace IO NodeState
---   -> ChainDB.TraceEvent blk
---   -> IO ()
--- traceNodeStateChainDB _scp tr ev =
---   case ev of
---     ChainDB.TraceOpenEvent ev' ->
---       case ev' of
---         ChainDB.StartedOpeningImmutableDB ->
---           traceWith tr $ NodeOpeningDbs StartedOpeningImmutableDB
---         ChainDB.OpenedImmutableDB p chunk ->
---           traceWith tr $ NodeOpeningDbs $ OpenedImmutableDB (pointSlot p) chunk
---         ChainDB.StartedOpeningVolatileDB ->
---           traceWith tr $ NodeOpeningDbs StartedOpeningVolatileDB
---         ChainDB.OpenedVolatileDB ->
---           traceWith tr $ NodeOpeningDbs OpenedVolatileDB
---         ChainDB.StartedOpeningLgrDB ->
---           traceWith tr $ NodeOpeningDbs StartedOpeningLgrDB
---         ChainDB.OpenedLgrDB ->
---           traceWith tr $ NodeOpeningDbs OpenedLgrDB
---         _ -> return ()
---     ChainDB.TraceLedgerReplayEvent ev' ->
---       case ev' of
---         LgrDb.ReplayFromGenesis (LgrDb.ReplayGoal p) ->
---           traceWith tr $ NodeReplays $ ReplayFromGenesis (pointSlot p)
---         LgrDb.ReplayFromSnapshot _ (RP.RealPoint s _) (LgrDb.ReplayStart rs) (LgrDb.ReplayGoal rp) ->
---           traceWith tr $ NodeReplays $ ReplayFromSnapshot s (pointSlot rs) (pointSlot rp)
---         LgrDb.ReplayedBlock (RP.RealPoint s _) _ (LgrDb.ReplayStart rs) (LgrDb.ReplayGoal rp) ->
---           traceWith tr $ NodeReplays $ ReplayedBlock s (pointSlot rs) (pointSlot rp)
---     ChainDB.TraceInitChainSelEvent ev' ->
---       case ev' of
---         ChainDB.StartedInitChainSelection ->
---           traceWith tr $ NodeInitChainSelection InitChainStartedSelection
---         ChainDB.InitalChainSelected ->
---           traceWith tr $ NodeInitChainSelection InitChainSelected
---         _ -> return ()
---     ChainDB.TraceAddBlockEvent ev' ->
---       case ev' of
---         ChainDB.AddedToCurrentChain _ (ChainDB.NewTipInfo currentTip ntEpoch sInEpoch _) _ _ -> do
---           -- The slot of the latest block consumed (our progress).
---           let RP.RealPoint ourSlotSinceSystemStart _ = currentTip
---           -- The slot corresponding to the latest wall-clock time (our target).
---           slotSinceSystemStart <- getSlotForNow
---           let syncProgressPct :: SyncPercentage
---               syncProgressPct = (   fromIntegral (unSlotNo ourSlotSinceSystemStart)
---                                   / fromIntegral (unSlotNo slotSinceSystemStart)
---                                 ) * 100.0
---           traceWith tr $ NodeAddBlock $
---             AddedToCurrentChain ntEpoch (SlotNo sInEpoch) syncProgressPct
---         _ -> return ()
---     _ -> return ()
+traceNodeStateChainDB
+  :: SomeConsensusProtocol
+  -> Trace IO NodeState
+  -> ChainDB.TraceEvent blk
+  -> IO ()
+traceNodeStateChainDB _scp tr ev =
+  case ev of
+    ChainDB.TraceOpenEvent ev' ->
+      case ev' of
+        ChainDB.StartedOpeningImmutableDB ->
+          traceWith tr $ NodeOpeningDbs StartedOpeningImmutableDB
+        ChainDB.OpenedImmutableDB p chunk ->
+          traceWith tr $ NodeOpeningDbs $ OpenedImmutableDB (pointSlot p) chunk
+        ChainDB.StartedOpeningVolatileDB ->
+          traceWith tr $ NodeOpeningDbs StartedOpeningVolatileDB
+        ChainDB.OpenedVolatileDB ->
+          traceWith tr $ NodeOpeningDbs OpenedVolatileDB
+        ChainDB.StartedOpeningLgrDB ->
+          traceWith tr $ NodeOpeningDbs StartedOpeningLgrDB
+        ChainDB.OpenedLgrDB ->
+          traceWith tr $ NodeOpeningDbs OpenedLgrDB
+        _ -> return ()
+    ChainDB.TraceLedgerReplayEvent ev' ->
+      case ev' of
+        LgrDb.ReplayFromGenesis (LgrDb.ReplayGoal p) ->
+          traceWith tr $ NodeReplays $ ReplayFromGenesis (pointSlot p)
+        LgrDb.ReplayFromSnapshot _ (RP.RealPoint s _) (LgrDb.ReplayStart rs) (LgrDb.ReplayGoal rp) ->
+          traceWith tr $ NodeReplays $ ReplayFromSnapshot s (pointSlot rs) (pointSlot rp)
+        LgrDb.ReplayedBlock (RP.RealPoint s _) _ (LgrDb.ReplayStart rs) (LgrDb.ReplayGoal rp) ->
+          traceWith tr $ NodeReplays $ ReplayedBlock s (pointSlot rs) (pointSlot rp)
+    ChainDB.TraceInitChainSelEvent ev' ->
+      case ev' of
+        ChainDB.StartedInitChainSelection ->
+          traceWith tr $ NodeInitChainSelection InitChainStartedSelection
+        ChainDB.InitalChainSelected ->
+          traceWith tr $ NodeInitChainSelection InitChainSelected
+        _ -> return ()
+    ChainDB.TraceAddBlockEvent ev' ->
+      case ev' of
+        ChainDB.AddedToCurrentChain _ (ChainDB.NewTipInfo currentTip ntEpoch sInEpoch _) _ _ -> do
+          -- The slot of the latest block consumed (our progress).
+          let RP.RealPoint ourSlotSinceSystemStart _ = currentTip
+          -- The slot corresponding to the latest wall-clock time (our target).
+          slotSinceSystemStart <- getSlotForNow
+          let syncProgressPct :: SyncPercentage
+              syncProgressPct = (   fromIntegral (unSlotNo ourSlotSinceSystemStart)
+                                  / fromIntegral (unSlotNo slotSinceSystemStart)
+                                ) * 100.0
+          traceWith tr $ NodeAddBlock $
+            AddedToCurrentChain ntEpoch (SlotNo sInEpoch) syncProgressPct
+        _ -> return ()
+    _ -> return ()
 
 traceNodeStateStartup
   :: Trace IO NodeState

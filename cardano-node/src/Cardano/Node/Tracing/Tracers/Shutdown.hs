@@ -12,7 +12,7 @@ module Cardano.Node.Tracing.Tracers.Shutdown
 import           Data.Aeson (Value (..), (.=))
 import           Data.Monoid (mconcat, (<>))
 import           Data.Text (Text, pack)
-import           Prelude (error, show, Maybe(..))
+import           Prelude (show, Maybe(..))
 
 import           Cardano.Logging
 import           Cardano.Node.Handlers.Shutdown

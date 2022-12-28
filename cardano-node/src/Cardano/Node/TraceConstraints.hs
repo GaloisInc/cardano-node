@@ -20,8 +20,6 @@ import           Ouroboros.Consensus.Ledger.SupportsMempool (ApplyTxErr, HasTxId
 import           Ouroboros.Consensus.Protocol.Abstract (ValidationErr)
 import           Ouroboros.Consensus.Shelley.Ledger.Mempool (GenTx, TxId)
 
-import           Network.Mux.Trace (TraceLabelPeer)
-import           Ouroboros.Network.Socket (ConnectionId)
 
 
 -- | Tracing-related constraints for monitoring purposes.

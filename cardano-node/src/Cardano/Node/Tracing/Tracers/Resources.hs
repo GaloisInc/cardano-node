@@ -6,7 +6,6 @@ module Cardano.Node.Tracing.Tracers.Resources
 
 import           "contra-tracer" Control.Tracer
 
-import           Cardano.Logging (SeverityS (..))
 import           Cardano.Logging.Resources
 import           Cardano.Prelude hiding (trace)
 

@@ -10,612 +10,743 @@
 
 {-# OPTIONS_GHC -Wno-orphans  #-}
 
-module Cardano.Node.Tracing.Tracers.Consensus () where
---   ( severityChainSyncClientEvent
---   , namesForChainSyncClientEvent
---   , docChainSyncClientEvent
-
---   , severityChainSyncServerEvent
---   , namesForChainSyncServerEvent
---   , docChainSyncServerEventHeader
---   , docChainSyncServerEventBlock
-
---   , severityBlockFetchDecision
---   , namesForBlockFetchDecision
---   , docBlockFetchDecision
-
---   , severityBlockFetchClient
---   , namesForBlockFetchClient
---   , docBlockFetchClient
-
---   , ClientMetrics(..)
---   , initialClientMetrics
---   , calculateBlockFetchClientMetrics
---   , docBlockFetchClientMetrics
-
---   , severityBlockFetchServer
---   , namesForBlockFetchServer
---   , docBlockFetchServer
-
---   , severityTxInbound
---   , namesForTxInbound
---   , docTxInbound
-
---   , severityTxOutbound
---   , namesForTxOutbound
---   , docTxOutbound
-
---   , severityLocalTxSubmissionServer
---   , namesForLocalTxSubmissionServer
---   , docLocalTxSubmissionServer
-
---   , severityMempool
---   , namesForMempool
---   , docMempool
-
---   , TraceStartLeadershipCheckPlus (..)
---   , ForgeTracerType
---   , forgeTracerTransform
---   , severityForge
---   , namesForForge
---   , docForge
-
---   , severityForge2
---   , namesForForge2
---   , docForge2
-
---   , namesForBlockchainTime
---   , severityBlockchainTime
---   , docBlockchainTime
-
---   , namesForKeepAliveClient
---   , severityKeepAliveClient
---   , docKeepAliveClient
-
---   , namesConsensusStartupError
---   , severityConsensusStartupError
---   , docConsensusStartupError
-
---   ) where
+module Cardano.Node.Tracing.Tracers.Consensus
+  (
+    TraceStartLeadershipCheckPlus (..)
+  , ForgeTracerType
+  , forgeTracerTransform
+  , initialClientMetrics
+  , calculateBlockFetchClientMetrics
+  ) where
 
 
--- import           Control.Monad.Class.MonadTime (Time (..))
--- import           Data.Aeson (ToJSON, Value (Number, String), toJSON, (.=))
--- import           Data.IntPSQ (IntPSQ)
--- import qualified Data.IntPSQ as Pq
--- import           Data.SOP.Strict
--- import qualified Data.Text as Text
--- import           Data.Time (DiffTime, NominalDiffTime)
--- import           Text.Show
+import           Control.Monad.Class.MonadTime (Time (..))
+import           Data.Aeson (ToJSON, Value (Number, String), toJSON, (.=))
+import           Data.IntPSQ (IntPSQ)
+import qualified Data.IntPSQ as Pq
+import           Data.SOP.Strict
+import qualified Data.Text as Text
+import           Data.Time (DiffTime, NominalDiffTime)
+import           Text.Show
 
 
--- import           Cardano.Slotting.Slot (WithOrigin (..))
+import           Cardano.Slotting.Slot (WithOrigin (..))
 
--- import           Cardano.Logging
--- import           Cardano.Node.Queries (HasKESInfo (..))
--- import           Cardano.Node.Tracing.Era.Byron ()
--- import           Cardano.Node.Tracing.Era.Shelley ()
--- import           Cardano.Node.Tracing.Formatting ()
--- import           Cardano.Node.Tracing.Render
--- import           Cardano.Node.Tracing.Tracers.ConsensusStartupException
--- import           Cardano.Node.Tracing.Tracers.ForgingThreadStats (ForgingStats)
--- import           Cardano.Node.Tracing.Tracers.StartLeadershipCheck
--- import           Cardano.Prelude hiding (All, Show, show)
+import           Cardano.Logging
+import           Cardano.Node.Queries (HasKESInfo (..))
+import           Cardano.Node.Tracing.Era.Byron ()
+import           Cardano.Node.Tracing.Era.Shelley ()
+import           Cardano.Node.Tracing.Formatting ()
+import           Cardano.Node.Tracing.Render
+import           Cardano.Node.Tracing.Tracers.ConsensusStartupException
+--import           Cardano.Node.Tracing.Tracers.ForgingThreadStats (ForgingStats)
+import           Cardano.Node.Tracing.Tracers.StartLeadershipCheck
+import           Cardano.Prelude hiding (All, Show, show)
 
--- import           Cardano.Protocol.TPraos.OCert (KESPeriod (..))
+import           Cardano.Protocol.TPraos.OCert (KESPeriod (..))
 
--- import qualified Ouroboros.Network.AnchoredFragment as AF
--- import qualified Ouroboros.Network.AnchoredSeq as AS
--- import           Ouroboros.Network.Block hiding (blockPrevHash)
--- import           Ouroboros.Network.BlockFetch.ClientState (TraceLabelPeer (..))
--- import qualified Ouroboros.Network.BlockFetch.ClientState as BlockFetch
--- import           Ouroboros.Network.BlockFetch.Decision
--- import           Ouroboros.Network.DeltaQ (GSV (..), PeerGSV (..))
--- import           Ouroboros.Network.KeepAlive (TraceKeepAliveClient (..))
--- import           Ouroboros.Network.TxSubmission.Inbound hiding (txId)
--- import           Ouroboros.Network.TxSubmission.Outbound
+import qualified Ouroboros.Network.AnchoredFragment as AF
+import qualified Ouroboros.Network.AnchoredSeq as AS
+import           Ouroboros.Network.Block hiding (blockPrevHash)
+import           Ouroboros.Network.BlockFetch.ClientState (TraceLabelPeer (..))
+import qualified Ouroboros.Network.BlockFetch.ClientState as BlockFetch
+import           Ouroboros.Network.BlockFetch.Decision
+import           Ouroboros.Network.ConnectionId (ConnectionId(..))
+import           Ouroboros.Network.DeltaQ (GSV (..), PeerGSV (..))
+import           Ouroboros.Network.KeepAlive (TraceKeepAliveClient (..))
+import           Ouroboros.Network.TxSubmission.Inbound hiding (txId)
+import           Ouroboros.Network.TxSubmission.Outbound
 
--- import qualified Data.Aeson as Aeson
--- import           Ouroboros.Consensus.Block
--- import           Ouroboros.Consensus.BlockchainTime (SystemStart (..))
--- import           Ouroboros.Consensus.BlockchainTime.WallClock.Util (TraceBlockchainTimeEvent (..))
--- import           Ouroboros.Consensus.Cardano.Block
--- import           Ouroboros.Consensus.Ledger.Inspect (LedgerEvent (..), LedgerUpdate, LedgerWarning)
--- import           Ouroboros.Consensus.Ledger.SupportsMempool (ApplyTxErr, GenTxId, HasTxId,
---                    LedgerSupportsMempool, txForgetValidated, txId)
--- import           Ouroboros.Consensus.Ledger.SupportsProtocol
--- import           Ouroboros.Consensus.Mempool.API (MempoolSize (..), TraceEventMempool (..))
--- import           Ouroboros.Consensus.MiniProtocol.BlockFetch.Server
---                    (TraceBlockFetchServerEvent (..))
--- import           Ouroboros.Consensus.MiniProtocol.ChainSync.Client
--- import           Ouroboros.Consensus.MiniProtocol.ChainSync.Server
--- import           Ouroboros.Consensus.MiniProtocol.LocalTxSubmission.Server
---                    (TraceLocalTxSubmissionServerEvent (..))
--- import           Ouroboros.Consensus.Node.Run (SerialiseNodeToNodeConstraints, estimateBlockSize)
--- import           Ouroboros.Consensus.Node.Tracers
--- import qualified Ouroboros.Consensus.Protocol.Ledger.HotKey as HotKey
--- import           Ouroboros.Consensus.Util.Enclose
-
-
--- instance LogFormatting a => LogFormatting (TraceLabelCreds a) where
---   forMachine dtal (TraceLabelCreds creds a)  =
---     mconcat [ "credentials" .= toJSON creds
---              , "val"         .= forMachine dtal a
---             ]
--- -- TODO Trace label creds as well
---   forHuman (TraceLabelCreds _t a)         = forHuman a
---   asMetrics (TraceLabelCreds _t a)        = asMetrics a
+import qualified Data.Aeson as Aeson
+import           Ouroboros.Consensus.Block
+import           Ouroboros.Consensus.BlockchainTime (SystemStart (..))
+import           Ouroboros.Consensus.BlockchainTime.WallClock.Util (TraceBlockchainTimeEvent (..))
+import           Ouroboros.Consensus.Cardano.Block
+import           Ouroboros.Consensus.Ledger.Inspect (LedgerEvent (..), LedgerUpdate, LedgerWarning)
+import           Ouroboros.Consensus.Ledger.SupportsMempool (ApplyTxErr, GenTxId, HasTxId,
+                   LedgerSupportsMempool, txForgetValidated, txId)
+import           Ouroboros.Consensus.Ledger.SupportsProtocol
+import           Ouroboros.Consensus.Mempool.API (MempoolSize (..), TraceEventMempool (..))
+import           Ouroboros.Consensus.MiniProtocol.BlockFetch.Server
+                   (TraceBlockFetchServerEvent (..))
+import           Ouroboros.Consensus.MiniProtocol.ChainSync.Client
+import           Ouroboros.Consensus.MiniProtocol.ChainSync.Server
+import           Ouroboros.Consensus.MiniProtocol.LocalTxSubmission.Server
+                   (TraceLocalTxSubmissionServerEvent (..))
+import           Ouroboros.Consensus.Node.Run (SerialiseNodeToNodeConstraints, estimateBlockSize)
+import           Ouroboros.Consensus.Node.Tracers
+import qualified Ouroboros.Consensus.Protocol.Ledger.HotKey as HotKey
+import           Ouroboros.Consensus.Util.Enclose
 
 
--- instance (LogFormatting (LedgerUpdate blk), LogFormatting (LedgerWarning blk))
---       =>  LogFormatting (LedgerEvent blk) where
---   forMachine dtal = \case
---     LedgerUpdate  update  -> forMachine dtal update
---     LedgerWarning warning -> forMachine dtal warning
+instance Show adr => LogFormatting (ConnectionId adr) where
+  forMachine dtal (ConnectionId local remote) =
+    mconcat [ "connectionId" .= String ((Text.pack . show) local
+                                          <> " "
+                                          <> (Text.pack . show) remote)
+    ]
 
--- tipToObject :: forall blk. ConvertRawHash blk => Tip blk -> Aeson.Object
--- tipToObject = \case
---   TipGenesis -> mconcat
---     [ "slot"    .= toJSON (0 :: Int)
---     , "block"   .= String "genesis"
---     , "blockNo" .= toJSON ((-1) :: Int)
---     ]
---   Tip slot hash blockno -> mconcat
---     [ "slot"    .= slot
---     , "block"   .= String (renderHeaderHash (Proxy @blk) hash)
---     , "blockNo" .= blockno
---     ]
+--------------------------------------------------------------------------------
+--   TraceLabelCreds peer a
+--------------------------------------------------------------------------------
 
--- --------------------------------------------------------------------------------
--- -- ChainSyncClient Tracer
--- --------------------------------------------------------------------------------
+instance LogFormatting a => LogFormatting (TraceLabelCreds a) where
+  forMachine dtal (TraceLabelCreds creds a)  =
+    mconcat $ ("credentials" .= toJSON creds) : [forMachine dtal a]
 
--- severityChainSyncClientEvent ::
---   BlockFetch.TraceLabelPeer peer (TraceChainSyncClientEvent blk) -> SeverityS
--- severityChainSyncClientEvent (BlockFetch.TraceLabelPeer _ e) =
---     severityChainSyncClientEvent' e
+  forHuman (TraceLabelCreds creds a)         =
+    "With label " <> (Text.pack . show) creds <> ", " <> forHuman a
+  asMetrics (TraceLabelCreds _creds a)        =
+    asMetrics a
 
--- namesForChainSyncClientEvent ::
---   BlockFetch.TraceLabelPeer peer (TraceChainSyncClientEvent blk) -> [Text]
--- namesForChainSyncClientEvent (BlockFetch.TraceLabelPeer _ e) = namesForChainSyncClientEvent' e
-
--- severityChainSyncClientEvent' :: TraceChainSyncClientEvent blk -> SeverityS
--- severityChainSyncClientEvent' TraceDownloadedHeader {}  = Info
--- severityChainSyncClientEvent' TraceFoundIntersection {} = Info
--- severityChainSyncClientEvent' TraceRolledBack {}        = Notice
--- severityChainSyncClientEvent' TraceException {}         = Warning
--- severityChainSyncClientEvent' TraceTermination {}       = Notice
-
--- namesForChainSyncClientEvent' :: TraceChainSyncClientEvent blk -> [Text]
--- namesForChainSyncClientEvent' TraceDownloadedHeader {} =
---       ["DownloadedHeader"]
--- namesForChainSyncClientEvent' TraceFoundIntersection {} =
---       ["FoundIntersection"]
--- namesForChainSyncClientEvent' TraceRolledBack {} =
---       ["RolledBack"]
--- namesForChainSyncClientEvent' TraceException {} =
---       ["Exception"]
--- namesForChainSyncClientEvent' TraceTermination {} =
---       ["Termination"]
-
--- instance (ConvertRawHash blk, LedgerSupportsProtocol blk)
---       => LogFormatting (TraceChainSyncClientEvent blk) where
---   forHuman (TraceDownloadedHeader pt) =
---     "While following a candidate chain, we rolled forward by downloading a\
---     \ header. " <> showT (headerPoint pt)
---   forHuman (TraceRolledBack tip) =
---     "While following a candidate chain, we rolled back to the given point: "
---       <> showT tip
---   forHuman (TraceException exc) =
---     "An exception was thrown by the Chain Sync Client. "
---       <> showT exc
---   forHuman TraceFoundIntersection {} =
---       "We found an intersection between our chain fragment and the\
---       \ candidate's chain."
---   forHuman (TraceTermination res) =
---       "The client has terminated. " <> showT res
-
---   forMachine _dtal (TraceDownloadedHeader h) =
---       mconcat [ "kind" .= String "DownloadedHeader"
---               , tipToObject (tipFromHeader h)
---               ]
---   forMachine dtal (TraceRolledBack tip) =
---       mconcat [ "kind" .= String "RolledBack"
---                , "tip" .= forMachine dtal tip ]
---   forMachine _dtal (TraceException exc) =
---       mconcat [ "kind" .= String "Exception"
---                , "exception" .= String (Text.pack $ show exc) ]
---   forMachine _dtal TraceFoundIntersection {} =
---       mconcat [ "kind" .= String "FoundIntersection" ]
---   forMachine _dtal (TraceTermination reason) =
---       mconcat [ "kind" .= String "Termination"
---                , "reason" .= String (Text.pack $ show reason) ]
+instance MetaTrace a => MetaTrace (TraceLabelCreds a) where
+  namespaceFor (TraceLabelCreds _label obj) = (nsCast . namespaceFor) obj
+  severityFor ns = severityFor (nsCast ns)
+  privacyFor ns = privacyFor (nsCast ns)
+  detailsFor ns = detailsFor (nsCast ns)
+  documentFor ns = documentFor (nsCast ns :: Namespace a)
+  metricsDocFor ns = metricsDocFor (nsCast ns :: Namespace a)
+  allNamespaces = map nsCast (allNamespaces :: [Namespace a])
 
 
--- docChainSyncClientEvent ::
---   Documented (BlockFetch.TraceLabelPeer peer (TraceChainSyncClientEvent blk))
--- docChainSyncClientEvent = Documented [
---     DocMsg
---       ["DownloadedHeader"]
---       []
---       "While following a candidate chain, we rolled forward by downloading a\
---       \ header."
---   , DocMsg
---       ["RolledBack"]
---       []
---       "While following a candidate chain, we rolled back to the given point."
---   , DocMsg
---       ["FoundIntersection"]
---       []
---       "We found an intersection between our chain fragment and the\
---       \ candidate's chain."
---   , DocMsg
---       ["Exception"]
---       []
---       "An exception was thrown by the Chain Sync Client."
---   , DocMsg
---       ["Termination"]
---       []
---       "The client has terminated."
---   ]
+--------------------------------------------------------------------------------
+--   TraceLabelPeer peer a
+--------------------------------------------------------------------------------
 
--- --------------------------------------------------------------------------------
--- -- ChainSyncServer Tracer
--- --------------------------------------------------------------------------------
+instance (LogFormatting peer, Show peer, LogFormatting a)
+  => LogFormatting (TraceLabelPeer peer a) where
+  forMachine dtal (TraceLabelPeer peerid a) =
+    mconcat [ "peer" .= forMachine dtal peerid ] <> forMachine dtal a
+  forHuman (TraceLabelPeer peerid a) = "Peer is " <> showT peerid
+                                        <> ". " <> forHuman a
+  asMetrics (TraceLabelPeer _peerid a) = asMetrics a
 
--- severityChainSyncServerEvent :: TraceChainSyncServerEvent blk -> SeverityS
--- severityChainSyncServerEvent (TraceChainSyncServerUpdate _tip _upd _blocking enclosing) =
---     case enclosing of
---       RisingEdge  -> Info
---       FallingEdge -> Debug
+instance MetaTrace a => MetaTrace (TraceLabelPeer label a) where
+  namespaceFor (TraceLabelPeer _label obj) = (nsCast . namespaceFor) obj
+  severityFor ns = severityFor (nsCast ns)
+  privacyFor ns = privacyFor (nsCast ns)
+  detailsFor ns = detailsFor (nsCast ns)
+  documentFor ns = documentFor (nsCast ns :: Namespace a)
+  metricsDocFor ns = metricsDocFor (nsCast ns :: Namespace a)
+  allNamespaces = map nsCast (allNamespaces :: [Namespace a])
 
--- namesForChainSyncServerEvent :: TraceChainSyncServerEvent blk -> [Text]
--- namesForChainSyncServerEvent (TraceChainSyncServerUpdate _tip _update _blocking _enclosing) =
---       ["Update"]
-
--- instance ConvertRawHash blk
---       => LogFormatting (TraceChainSyncServerEvent blk) where
---   forMachine dtal (TraceChainSyncServerUpdate tip update blocking enclosing) =
---       mconcat $
---                [ "kind" .= String "ChainSyncServer.Update"
---                , "tip" .= tipToObject tip
---                , case update of
---                    AddBlock pt -> "addBlock" .= renderPointForDetails dtal pt
---                    RollBack pt -> "rollBackTo" .= renderPointForDetails dtal pt
---                , "blockingRead" .= case blocking of Blocking -> True; NonBlocking -> False
---                ]
---                <> [ "risingEdge" .= True | RisingEdge <- [enclosing] ]
-
---   asMetrics (TraceChainSyncServerUpdate _tip (AddBlock _pt) _blocking FallingEdge) =
---       [CounterM "ChainSync.HeadersServed.Falling" Nothing]
---   asMetrics _ = []
+instance (LogFormatting (LedgerUpdate blk), LogFormatting (LedgerWarning blk))
+      =>  LogFormatting (LedgerEvent blk) where
+  forMachine dtal = \case
+    LedgerUpdate  update  -> forMachine dtal update
+    LedgerWarning warning -> forMachine dtal warning
 
 
+--------------------------------------------------------------------------------
+-- ChainSyncClient Tracer
+--------------------------------------------------------------------------------
 
--- -- | Metrics documented here, but implemented specially
--- docChainSyncServerEventHeader :: Documented (TraceChainSyncServerEvent blk)
--- docChainSyncServerEventHeader = Documented [
---     DocMsg
---       ["Update"]
---       [("ChainSync.HeadersServed", "A counter triggered on any header event")
---       ,("ChainSync.HeadersServed.Falling", "A counter triggered only on header event with falling edge")]
---       "A server read has occurred, either for an add block or a rollback"
---   ]
+instance (ConvertRawHash blk, LedgerSupportsProtocol blk)
+      => LogFormatting (TraceChainSyncClientEvent blk) where
+  forHuman (TraceDownloadedHeader pt) =
+    "While following a candidate chain, we rolled forward by downloading a\
+    \ header. " <> showT (headerPoint pt)
+  forHuman (TraceRolledBack tip) =
+    "While following a candidate chain, we rolled back to the given point: "
+      <> showT tip
+  forHuman (TraceException exc) =
+    "An exception was thrown by the Chain Sync Client. "
+      <> showT exc
+  forHuman TraceFoundIntersection {} =
+      "We found an intersection between our chain fragment and the\
+      \ candidate's chain."
+  forHuman (TraceTermination res) =
+      "The client has terminated. " <> showT res
 
--- docChainSyncServerEventBlock :: Documented (TraceChainSyncServerEvent blk)
--- docChainSyncServerEventBlock =
---     addDocumentedNamespace
---       []
---       docChainSyncServerEventBlock'
+  forMachine _dtal (TraceDownloadedHeader h) =
+      mconcat [ "kind" .= String "DownloadedHeader"
+              , tipToObject (tipFromHeader h)
+              ]
+  forMachine dtal (TraceRolledBack tip) =
+      mconcat [ "kind" .= String "RolledBack"
+               , "tip" .= forMachine dtal tip ]
+  forMachine _dtal (TraceException exc) =
+      mconcat [ "kind" .= String "Exception"
+               , "exception" .= String (Text.pack $ show exc) ]
+  forMachine _dtal TraceFoundIntersection {} =
+      mconcat [ "kind" .= String "FoundIntersection" ]
+  forMachine _dtal (TraceTermination reason) =
+      mconcat [ "kind" .= String "Termination"
+               , "reason" .= String (Text.pack $ show reason) ]
 
--- docChainSyncServerEventBlock' :: Documented (TraceChainSyncServerEvent blk)
--- docChainSyncServerEventBlock' = Documented [
---     DocMsg
---       ["Update"]
---       []
---       "A server read has occurred, either for an add block or a rollback"
---   ]
+tipToObject :: forall blk. ConvertRawHash blk => Tip blk -> Aeson.Object
+tipToObject = \case
+  TipGenesis -> mconcat
+    [ "slot"    .= toJSON (0 :: Int)
+    , "block"   .= String "genesis"
+    , "blockNo" .= toJSON ((-1) :: Int)
+    ]
+  Tip slot hash blockno -> mconcat
+    [ "slot"    .= slot
+    , "block"   .= String (renderHeaderHash (Proxy @blk) hash)
+    , "blockNo" .= blockno
+    ]
 
--- --------------------------------------------------------------------------------
--- -- BlockFetchDecision Tracer
--- --------------------------------------------------------------------------------
+instance MetaTrace (TraceChainSyncClientEvent blk) where
+  namespaceFor TraceDownloadedHeader {} = Namespace [] ["DownloadedHeader"]
+  namespaceFor TraceRolledBack {} = Namespace [] ["RolledBack"]
+  namespaceFor TraceException {} = Namespace [] ["Exception"]
+  namespaceFor TraceFoundIntersection {} = Namespace [] ["FoundIntersection"]
+  namespaceFor TraceTermination {} = Namespace [] ["Termination"]
 
--- severityBlockFetchDecision ::
---      [BlockFetch.TraceLabelPeer peer (FetchDecision [Point header])]
---   -> SeverityS
--- severityBlockFetchDecision []  = Info
--- severityBlockFetchDecision l   = maximum $
---   map (\(BlockFetch.TraceLabelPeer _ a) -> fetchDecisionSeverity a) l
---     where
---       fetchDecisionSeverity :: FetchDecision a -> SeverityS
---       fetchDecisionSeverity fd =
---         case fd of
---           Left FetchDeclineChainNotPlausible     -> Debug
---           Left FetchDeclineChainNoIntersection   -> Notice
---           Left FetchDeclineAlreadyFetched        -> Debug
---           Left FetchDeclineInFlightThisPeer      -> Debug
---           Left FetchDeclineInFlightOtherPeer     -> Debug
---           Left FetchDeclinePeerShutdown          -> Info
---           Left FetchDeclinePeerSlow              -> Info
---           Left FetchDeclineReqsInFlightLimit {}  -> Info
---           Left FetchDeclineBytesInFlightLimit {} -> Info
---           Left FetchDeclinePeerBusy {}           -> Info
---           Left FetchDeclineConcurrencyLimit {}   -> Info
---           Right _                                -> Info
+  severityFor (Namespace _ ["DownloadedHeader"]) _ = Just Info
+  severityFor (Namespace _ ["RolledBack"]) _ = Just Notice
+  severityFor (Namespace _ ["Exception"]) _ = Just Warning
+  severityFor (Namespace _ ["FoundIntersection"]) _ = Just Info
+  severityFor (Namespace _ ["Termination"]) _ = Just Notice
+  severityFor _ _ = Nothing
 
--- namesForBlockFetchDecision ::
---      [BlockFetch.TraceLabelPeer peer (FetchDecision [Point header])]
+  documentFor (Namespace _ ["DownloadedHeader"]) = Just
+    "While following a candidate chain, we rolled forward by downloading a\
+    \ header."
+  documentFor (Namespace _ ["RolledBack"]) = Just
+    "While following a candidate chain, we rolled back to the given point."
+  documentFor (Namespace _ ["Exception"]) = Just
+    "An exception was thrown by the Chain Sync Client."
+  documentFor (Namespace _ ["FoundIntersection"]) = Just
+    "We found an intersection between our chain fragment and the\
+    \ candidate's chain."
+  documentFor (Namespace _ ["Termination"]) = Just
+    "The client has terminated."
+  documentFor _ = Nothing
+
+  allNamespaces =
+    [
+      Namespace [] ["DownloadedHeader"]
+    , Namespace [] ["RolledBack"]
+    , Namespace [] ["Exception"]
+    , Namespace [] ["FoundIntersection"]
+    , Namespace [] ["Termination"]
+    ]
+
+--------------------------------------------------------------------------------
+-- ChainSyncServer Tracer
+--------------------------------------------------------------------------------
+
+instance ConvertRawHash blk
+      => LogFormatting (TraceChainSyncServerEvent blk) where
+  forMachine dtal (TraceChainSyncServerUpdate tip update blocking enclosing) =
+      mconcat $
+               [ "kind" .= String "ChainSyncServer.Update"
+               , "tip" .= tipToObject tip
+               , case update of
+                   AddBlock pt -> "addBlock" .= renderPointForDetails dtal pt
+                   RollBack pt -> "rollBackTo" .= renderPointForDetails dtal pt
+               , "blockingRead" .= case blocking of Blocking -> True; NonBlocking -> False
+               ]
+               <> [ "risingEdge" .= True | RisingEdge <- [enclosing] ]
+
+  asMetrics (TraceChainSyncServerUpdate _tip (AddBlock _pt) _blocking FallingEdge) =
+      [CounterM "ChainSync.HeadersServed.Falling" Nothing]
+  asMetrics _ = []
+
+instance MetaTrace (TraceChainSyncServerEvent blk) where
+  namespaceFor TraceChainSyncServerUpdate {} = Namespace [] ["Update"]
+
+  severityFor (Namespace _ ["Update"])
+              (Just (TraceChainSyncServerUpdate _tip _upd _blocking enclosing)) =
+                case enclosing of
+                  RisingEdge  -> Just Info
+                  FallingEdge -> Just Debug
+  severityFor (Namespace _ ["Update"]) Nothing = Just Info
+  severityFor _ _ = Nothing
+
+  metricsDocFor (Namespace _ ["Update"]) =
+    [ ("ChainSync.HeadersServed", "A counter triggered on any header event")
+    , ("ChainSync.HeadersServed.Falling",
+        "A counter triggered only on header event with falling edge")]
+  metricsDocFor _ = []
+
+  documentFor (Namespace _ ["Update"]) = Just
+    "A server read has occurred, either for an add block or a rollback"
+  documentFor _ = Nothing
+
+  allNamespaces = [Namespace [] ["Update"]]
+
+--------------------------------------------------------------------------------
+-- BlockFetchClient Metrics
+--------------------------------------------------------------------------------
+
+data CdfCounter = CdfCounter {
+    limit :: Int64
+  , counter :: Int64
+}
+
+decCdf :: Ord a => Num a => a -> CdfCounter -> CdfCounter
+decCdf v cdf =
+  if v < fromIntegral (limit cdf)
+    then cdf {counter = counter cdf - 1}
+    else cdf
+
+incCdf ::Ord a => Num a => a -> CdfCounter -> CdfCounter
+incCdf v cdf =
+  if v < fromIntegral (limit cdf)
+    then cdf {counter = counter cdf + 1}
+    else cdf
+
+data ClientMetrics = ClientMetrics {
+    cmSlotMap  :: IntPSQ Word64 NominalDiffTime
+  , cmCdf1sVar :: CdfCounter
+  , cmCdf3sVar :: CdfCounter
+  , cmCdf5sVar :: CdfCounter
+  , cmDelay    :: Double
+  , cmBlockSize :: Word32
+  , cmTraceIt  :: Bool
+}
+
+instance LogFormatting ClientMetrics where
+  forMachine _dtal _ = mempty
+  asMetrics ClientMetrics {..} =
+    if cmTraceIt
+      then
+        let  size = Pq.size cmSlotMap
+             msgs =
+               [ DoubleM
+                    "Blockfetch.Client.Blockdelay"
+                    cmDelay
+               , IntM
+                    "Blockfetch.Client.Blocksize"
+                    (fromIntegral cmBlockSize)
+               , DoubleM "Blockfetch.Client.Blockdelay.cdfOne"
+                    (fromIntegral (counter cmCdf1sVar) / fromIntegral size)
+               , DoubleM "Blockfetch.Client.Blockdelay.cdfThree"
+                    (fromIntegral (counter cmCdf3sVar) / fromIntegral size)
+               , DoubleM "Blockfetch.Client.Blockdelay.cdfFive"
+                    (fromIntegral (counter cmCdf5sVar) / fromIntegral size)
+               ]
+        in if cmDelay > 5
+             then
+               CounterM "Blockfetch.Client.Lateblocks" Nothing
+                 : msgs
+             else msgs
+      else []
+
+initialClientMetrics :: ClientMetrics
+initialClientMetrics =
+    ClientMetrics
+      Pq.empty
+      (CdfCounter 1 0)
+      (CdfCounter 3 0)
+      (CdfCounter 5 0)
+      0
+      0
+      False
+
+calculateBlockFetchClientMetrics ::
+     ClientMetrics
+  -> LoggingContext
+  -> BlockFetch.TraceLabelPeer peer (BlockFetch.TraceFetchClientState header)
+  -> IO ClientMetrics
+calculateBlockFetchClientMetrics cm@ClientMetrics {..} _lc
+            (TraceLabelPeer _ (BlockFetch.CompletedBlockFetch p _ _ _ forgeDelay blockSize)) =
+    case pointSlot p of
+            Origin -> pure cm {cmTraceIt = False}  -- Nothing to do.
+            At (SlotNo slotNo) -> do
+               if Pq.null cmSlotMap && forgeDelay > 20
+                  then pure cm {cmTraceIt = False} -- During startup wait until we are in sync
+                  else case Pq.lookup (fromIntegral slotNo) cmSlotMap of
+                        Just _ -> pure cm {cmTraceIt = False}  -- dupe, we only track the first
+                        Nothing -> do
+                          let slotMap' = Pq.insert (fromIntegral slotNo) slotNo forgeDelay cmSlotMap
+                          if Pq.size slotMap' > 1080 -- TODO k/2, should come from config file
+                            then case Pq.minView slotMap' of
+                                 Nothing -> pure cm {cmTraceIt = False} -- Err. We just inserted an element!
+                                 Just (_, minSlotNo, minDelay, slotMap'') ->
+                                   if minSlotNo == slotNo
+                                      then pure cm {cmTraceIt = False, cmSlotMap = slotMap'}
+                                      else let
+                                         cdf1sVar = decCdf minDelay cmCdf1sVar
+                                         cdf3sVar = decCdf minDelay cmCdf3sVar
+                                         cdf5sVar = decCdf minDelay cmCdf5sVar
+                                         cdf1sVar' = incCdf forgeDelay cdf1sVar
+                                         cdf3sVar' = incCdf forgeDelay cdf3sVar
+                                         cdf5sVar' = incCdf forgeDelay cdf5sVar
+                                         in pure cm {
+                                              cmCdf1sVar  = cdf1sVar'
+                                            , cmCdf3sVar  = cdf3sVar'
+                                            , cmCdf5sVar  = cdf5sVar'
+                                            , cmDelay     = realToFrac  forgeDelay
+                                            , cmBlockSize = blockSize
+                                            , cmTraceIt   = True
+                                            , cmSlotMap   = slotMap''}
+                            else let
+                               cdf1sVar' = incCdf forgeDelay cmCdf1sVar
+                               cdf3sVar' = incCdf forgeDelay cmCdf3sVar
+                               cdf5sVar' = incCdf forgeDelay cmCdf5sVar
+                                -- -- Wait until we have at least 45 samples before we start providing
+                                -- -- cdf estimates.
+                               in if Pq.size slotMap' >= 45
+                                    then pure cm {
+                                         cmCdf1sVar  = cdf1sVar'
+                                       , cmCdf3sVar  = cdf3sVar'
+                                       , cmCdf5sVar  = cdf5sVar'
+                                       , cmDelay     = realToFrac forgeDelay
+                                       , cmBlockSize = blockSize
+                                       , cmTraceIt   = True
+                                       , cmSlotMap   = slotMap'}
+                                   else pure cm {
+                                        cmCdf1sVar  = cdf1sVar'
+                                      , cmCdf3sVar  = cdf3sVar'
+                                      , cmCdf5sVar  = cdf5sVar'
+                                      , cmTraceIt   = False
+                                      , cmSlotMap   = slotMap'}
+
+calculateBlockFetchClientMetrics cm _lc _ = pure cm
+
+--------------------------------------------------------------------------------
+-- BlockFetchDecision Tracer
+--------------------------------------------------------------------------------
+
+instance (LogFormatting peer, Show peer) =>
+    LogFormatting [TraceLabelPeer peer (FetchDecision [Point header])] where
+  forMachine DMinimal _ = mempty
+  forMachine _ []       = mconcat
+    [ "kind"  .= String "EmptyPeersFetch"]
+  forMachine _ xs       = mconcat
+    [ "kind"  .= String "PeersFetch"
+    , "peers" .= toJSON
+      (foldl' (\acc x -> forMachine DDetailed x : acc) [] xs) ]
+
+  asMetrics peers = [IntM "BlockFetch.ConnectedPeers" (fromIntegral (length peers))]
+
+instance MetaTrace a => MetaTrace [TraceLabelPeer peer a] where
+  namespaceFor (a : tl) = (nsCast . namespaceFor) a
+  namespaceFor [] = Namespace [] ["EmptyPeersFetch"]
+  severityFor ns = severityFor (nsCast ns)
+  privacyFor ns = privacyFor (nsCast ns)
+  detailsFor ns = detailsFor (nsCast ns)
+  documentFor ns = documentFor (nsCast ns :: Namespace a)
+  metricsDocFor ns = metricsDocFor (nsCast ns :: Namespace a)
+  allNamespaces = map nsCast (allNamespaces :: [Namespace a])
+
+instance LogFormatting (FetchDecision [Point header]) where
+  forMachine _dtal (Left decline) =
+    mconcat [ "kind" .= String "FetchDecision declined"
+             , "declined" .= String (showT decline)
+             ]
+  forMachine _dtal (Right results) =
+    mconcat [ "kind" .= String "FetchDecision results"
+             , "length" .= String (showT $ length results)
+             ]
+
+instance MetaTrace (FetchDecision [Point header]) where
+    namespaceFor (Left _) = Namespace [] ["Decline"]
+    namespaceFor (Right _) = Namespace [] ["Accept"]
+
+    severityFor (Namespace _ ["Decline"]) _ = Just Info
+    severityFor (Namespace _ ["Accept"])  _ = Just Info
+
+    metricsDocFor (Namespace _ ["Decline"]) =
+      [("BlockFetch.ConnectedPeers", "Number of connected peers")]
+    metricsDocFor (Namespace _ ["Accept"]) =
+      [("BlockFetch.ConnectedPeers", "Number of connected peers")]
+    metricsDocFor _ = []
+
+    documentFor _ =  Just
+      "Throughout the decision making process we accumulate reasons to decline\
+      \ to fetch any blocks. This message carries the intermediate and final\
+      \ results."
+    allNamespaces =
+      [ Namespace [] ["Decline"]
+      , Namespace [] ["Accept"]]
+
+
+--------------------------------------------------------------------------------
+-- BlockFetchClientState Tracer
+--------------------------------------------------------------------------------
+
+instance (HasHeader header, ConvertRawHash header) =>
+  LogFormatting (BlockFetch.TraceFetchClientState header) where
+    forMachine _dtal BlockFetch.AddedFetchRequest {} =
+      mconcat [ "kind" .= String "AddedFetchRequest" ]
+    forMachine _dtal BlockFetch.AcknowledgedFetchRequest {} =
+      mconcat [ "kind" .= String "AcknowledgedFetchRequest" ]
+    forMachine _dtal (BlockFetch.SendFetchRequest af _) =
+      mconcat [ "kind" .= String "SendFetchRequest"
+              , "head" .= String (renderChainHash
+                                  (renderHeaderHash (Proxy @header))
+                                  (AF.headHash af))
+              , "length" .= toJSON (fragmentLength af)]
+        where
+          -- NOTE: this ignores the Byron era with its EBB complication:
+          -- the length would be underestimated by 1, if the AF is anchored
+          -- at the epoch boundary.
+          fragmentLength :: AF.AnchoredFragment header -> Int
+          fragmentLength f = fromIntegral . unBlockNo $
+              case (f, f) of
+                (AS.Empty{}, AS.Empty{}) -> 0
+                (firstHdr AS.:< _, _ AS.:> lastHdr) ->
+                  blockNo lastHdr - blockNo firstHdr + 1
+    forMachine _dtal (BlockFetch.CompletedBlockFetch pt _ _ _ delay blockSize) =
+      mconcat [ "kind"  .= String "CompletedBlockFetch"
+              , "delay" .= (realToFrac delay :: Double)
+              , "size"  .= blockSize
+              , "block" .= String
+                (case pt of
+                  GenesisPoint -> "Genesis"
+                  BlockPoint _ h -> renderHeaderHash (Proxy @header) h)
+              ]
+    forMachine _dtal BlockFetch.CompletedFetchBatch {} =
+      mconcat [ "kind" .= String "CompletedFetchBatch" ]
+    forMachine _dtal BlockFetch.StartedFetchBatch {} =
+      mconcat [ "kind" .= String "StartedFetchBatch" ]
+    forMachine _dtal BlockFetch.RejectedFetchBatch {} =
+      mconcat [ "kind" .= String "RejectedFetchBatch" ]
+    forMachine _dtal (BlockFetch.ClientTerminating outstanding) =
+      mconcat [ "kind" .= String "ClientTerminating"
+              , "outstanding" .= outstanding
+              ]
+
+instance MetaTrace (BlockFetch.TraceFetchClientState header) where
+    namespaceFor BlockFetch.AddedFetchRequest {} =
+      Namespace [] ["AddedFetchRequest"]
+    namespaceFor BlockFetch.AcknowledgedFetchRequest {} =
+      Namespace [] ["AcknowledgedFetchRequest"]
+    namespaceFor BlockFetch.SendFetchRequest {} =
+      Namespace [] ["SendFetchRequest"]
+    namespaceFor BlockFetch.StartedFetchBatch {} =
+      Namespace [] ["StartedFetchBatch"]
+    namespaceFor BlockFetch.CompletedFetchBatch {} =
+      Namespace [] ["CompletedFetchBatch"]
+    namespaceFor BlockFetch.CompletedBlockFetch {} =
+      Namespace [] ["CompletedBlockFetch"]
+    namespaceFor BlockFetch.RejectedFetchBatch {} =
+      Namespace [] ["RejectedFetchBatch"]
+    namespaceFor BlockFetch.ClientTerminating {} =
+      Namespace [] ["ClientTerminating"]
+
+    severityFor (Namespace _ ["AddedFetchRequest"]) _ = Just Info
+    severityFor (Namespace _ ["AcknowledgedFetchRequest"]) _ = Just Info
+    severityFor (Namespace _ ["SendFetchRequest"]) _ = Just Info
+    severityFor (Namespace _ ["StartedFetchBatch"]) _ = Just Info
+    severityFor (Namespace _ ["CompletedFetchBatch"]) _ = Just Info
+    severityFor (Namespace _ ["CompletedBlockFetch"]) _ = Just Info
+    severityFor (Namespace _ ["RejectedFetchBatch"]) _ = Just Info
+    severityFor (Namespace _ ["ClientTerminating"]) _ = Just Notice
+
+    documentFor (Namespace _ ["AddedFetchRequest"]) = Just
+      "The block fetch decision thread has added a new fetch instruction\
+        \ consisting of one or more individual request ranges."
+    documentFor (Namespace _ ["AcknowledgedFetchRequest"]) = Just
+      "Mark the point when the fetch client picks up the request added\
+            \ by the block fetch decision thread. Note that this event can happen\
+            \ fewer times than the 'AddedFetchRequest' due to fetch request merging."
+    documentFor (Namespace _ ["SendFetchRequest"]) = Just
+      "Mark the point when fetch request for a fragment is actually sent\
+       \ over the wire."
+    documentFor (Namespace _ ["StartedFetchBatch"]) = Just
+      "Mark the start of receiving a streaming batch of blocks. This will\
+      \ be followed by one or more 'CompletedBlockFetch' and a final\
+      \ 'CompletedFetchBatch'"
+    documentFor (Namespace _ ["CompletedFetchBatch"]) = Just
+      "Mark the successful end of receiving a streaming batch of blocks."
+    documentFor (Namespace _ ["RejectedFetchBatch"]) = Just
+      "If the other peer rejects our request then we have this event\
+       \ instead of 'StartedFetchBatch' and 'CompletedFetchBatch'."
+    documentFor (Namespace _ ["ClientTerminating"]) = Just
+      "The client is terminating.  Log the number of outstanding\
+       \ requests."
+
+    allNamespaces = [
+         Namespace [] ["AddedFetchRequest"]
+       , Namespace [] ["AcknowledgedFetchRequest"]
+       , Namespace [] ["SendFetchRequest"]
+       , Namespace [] ["StartedFetchBatch"]
+       , Namespace [] ["CompletedFetchBatch"]
+       , Namespace [] ["CompletedBlockFetch"]
+       , Namespace [] ["RejectedFetchBatch"]
+       , Namespace [] ["ClientTerminating"]
+      ]
+
+--------------------------------------------------------------------------------
+-- BlockFetchServerEvent
+--------------------------------------------------------------------------------
+
+instance ConvertRawHash blk => LogFormatting (TraceBlockFetchServerEvent blk) where
+  forMachine _dtal (TraceBlockFetchServerSendBlock blk) =
+    mconcat [ "kind" .= String "BlockFetchServer"
+             , "block" .= String (renderChainHash
+                                    @blk
+                                    (renderHeaderHash (Proxy @blk))
+                                    $ pointHash blk)]
+  asMetrics (TraceBlockFetchServerSendBlock _p) =
+    [CounterM "BlockFetch.BlocksServed" Nothing]
+
+instance MetaTrace (TraceBlockFetchServerEvent blk) where
+    namespaceFor (TraceBlockFetchServerSendBlock blk) =
+      Namespace [] ["SendBlock"]
+
+    severityFor (Namespace [] ["SendBlock"]) _ = Just
+      Info
+
+    metricsDocFor (Namespace [] ["SendBlock"]) =
+      [("BlockFetch.BlocksServed", "")]
+    metricsDocFor _ = []
+
+    documentFor (Namespace [] ["SendBlock"]) = Just
+      "The server sent a block to the peer."
+
+    allNamespaces = [Namespace [] ["SendBlock"]]
+
+--------------------------------------------------------------------------------
+-- TxInbound Tracer
+--------------------------------------------------------------------------------
+
+instance LogFormatting (TraceTxSubmissionInbound txid tx) where
+  forMachine _dtal (TraceTxSubmissionCollected count) =
+    mconcat
+      [ "kind" .= String "TraceTxSubmissionCollected"
+      , "count" .= toJSON count
+      ]
+  forMachine _dtal (TraceTxSubmissionProcessed processed) =
+    mconcat
+      [ "kind" .= String "TraceTxSubmissionProcessed"
+      , "accepted" .= toJSON (ptxcAccepted processed)
+      , "rejected" .= toJSON (ptxcRejected processed)
+      ]
+  forMachine _dtal TraceTxInboundTerminated =
+    mconcat
+      [ "kind" .= String "TraceTxInboundTerminated"
+      ]
+  forMachine _dtal (TraceTxInboundCanRequestMoreTxs count) =
+    mconcat
+      [ "kind" .= String "TraceTxInboundCanRequestMoreTxs"
+      , "count" .= toJSON count
+      ]
+  forMachine _dtal (TraceTxInboundCannotRequestMoreTxs count) =
+    mconcat
+      [ "kind" .= String "TraceTxInboundCannotRequestMoreTxs"
+      , "count" .= toJSON count
+      ]
+
+  asMetrics (TraceTxSubmissionCollected count)=
+    [CounterM "TxSubmission.Submitted" (Just count)]
+  asMetrics (TraceTxSubmissionProcessed processed) =
+    [ CounterM "TxSubmission.Accepted"
+        (Just (ptxcAccepted processed))
+    , CounterM "TxSubmission.Rejected"
+        (Just (ptxcRejected processed))
+    ]
+  asMetrics _ = []
+
+-- instance MetaTrace (TraceTxSubmissionInbound txid tx) where
+--     namespaceFor TraceTxSubmissionCollected {} = "Collected"
+--     namespaceFor TraceTxSubmissionCollected {} = "Collected"
+
+
+
+-- namesForTxInbound ::
+--     BlockFetch.TraceLabelPeer peer (TraceTxSubmissionInbound (GenTxId blk) (GenTx blk))
 --   -> [Text]
--- namesForBlockFetchDecision _ = []
+-- namesForTxInbound (BlockFetch.TraceLabelPeer _p ti) = namesForTxInbound' ti
 
--- instance (LogFormatting peer, Show peer) =>
---     LogFormatting [TraceLabelPeer peer (FetchDecision [Point header])] where
---   forMachine DMinimal _ = mempty
---   forMachine _ []       = mconcat
---     [ "kind"  .= String "EmptyPeersFetch"]
---   forMachine _ xs       = mconcat
---     [ "kind"  .= String "PeersFetch"
---     , "peers" .= toJSON
---       (foldl' (\acc x -> forMachine DDetailed x : acc) [] xs) ]
+-- namesForTxInbound' ::
+--     TraceTxSubmissionInbound (GenTxId blk) (GenTx blk)
+--   -> [Text]
+-- namesForTxInbound' (TraceTxSubmissionCollected _) =
+--     ["Collected"]
+-- namesForTxInbound' (TraceTxSubmissionProcessed _) =
+--     ["Processed"]
+-- namesForTxInbound' TraceTxInboundTerminated   =
+--     ["Terminated"]
+-- namesForTxInbound' TraceTxInboundCanRequestMoreTxs {} =
+--     ["CanRequestMoreTxs"]
+-- namesForTxInbound' TraceTxInboundCannotRequestMoreTxs {} =
+--     ["CannotRequestMoreTxs"]
 
---   asMetrics peers = [IntM "BlockFetch.ConnectedPeers" (fromIntegral (length peers))]
 
--- instance (LogFormatting peer, Show peer, LogFormatting a)
---   => LogFormatting (TraceLabelPeer peer a) where
---   forMachine dtal (TraceLabelPeer peerid a) =
---     mconcat [ "peer" .= forMachine dtal peerid ] <> forMachine dtal a
---   forHuman (TraceLabelPeer peerid a) = "Peer is " <> showT peerid
---                                         <> ". " <> forHuman a
---   asMetrics (TraceLabelPeer _peerid a) = asMetrics a
+-- severityTxInbound ::
+--     BlockFetch.TraceLabelPeer peer (TraceTxSubmissionInbound (GenTxId blk) (GenTx blk))
+--   -> SeverityS
+-- severityTxInbound (BlockFetch.TraceLabelPeer _p ti) = severityTxInbound' ti
 
--- instance LogFormatting (FetchDecision [Point header]) where
---   forMachine _dtal (Left decline) =
---     mconcat [ "kind" .= String "FetchDecision declined"
---              , "declined" .= String (showT decline)
---              ]
---   forMachine _dtal (Right results) =
---     mconcat [ "kind" .= String "FetchDecision results"
---              , "length" .= String (showT $ length results)
---              ]
+-- severityTxInbound' ::
+--     TraceTxSubmissionInbound (GenTxId blk) (GenTx blk)
+--   -> SeverityS
+-- severityTxInbound' TraceTxSubmissionCollected {}         = Debug
+-- severityTxInbound' TraceTxSubmissionProcessed {}         = Debug
+-- severityTxInbound' TraceTxInboundTerminated              = Notice
+-- severityTxInbound' TraceTxInboundCannotRequestMoreTxs {} = Debug
+-- severityTxInbound' TraceTxInboundCanRequestMoreTxs {}    = Debug
 
--- docBlockFetchDecision ::
---   Documented [BlockFetch.TraceLabelPeer remotePeer (FetchDecision [Point (Header blk)])]
--- docBlockFetchDecision = Documented [
+
+-- docTxInbound ::
+--   Documented (BlockFetch.TraceLabelPeer remotePeer
+--     (TraceTxSubmissionInbound txid tx))
+-- docTxInbound = addDocumentedNamespace [] docTxInbound'
+
+-- docTxInbound' ::
+--   Documented (BlockFetch.TraceLabelPeer remotePeer
+--     (TraceTxSubmissionInbound txid tx))
+-- docTxInbound' = Documented [
 --     DocMsg
---       []
---       [("BlockFetch.ConnectedPeers", "Number of connected peers")]
---       "Throughout the decision making process we accumulate reasons to decline\
---       \ to fetch any blocks. This message carries the intermediate and final\
---       \ results."
+--     ["Collected"]
+--     [ ("TxSubmission.Submitted", "")]
+--     "Number of transactions just about to be inserted."
+--   ,
+--     DocMsg
+--     ["Processed"]
+--     [ ("TxSubmission.Accepted", "")
+--     , ("TxSubmission.Rejected", "")
+--     ]
+--     "Just processed transaction pass/fail breakdown."
+--   ,
+--     DocMsg
+--     ["Terminated"]
+--     []
+--     "Server received 'MsgDone'."
+--   ,
+--     DocMsg
+--     ["CanRequestMoreTxs"]
+--     []
+--     "There are no replies in flight, but we do know some more txs we\
+--     \ can ask for, so lets ask for them and more txids."
+--   ,
+--     DocMsg
+--     ["CannotRequestMoreTxs"]
+--     []
+--     "There's no replies in flight, and we have no more txs we can\
+--     \ ask for so the only remaining thing to do is to ask for more\
+--     \ txids. Since this is the only thing to do now, we make this a\
+--     \ blocking call."
 --   ]
 
--- --------------------------------------------------------------------------------
--- -- BlockFetchClient Tracer
--- --------------------------------------------------------------------------------
 
--- data CdfCounter = CdfCounter {
---     limit :: Int64
---   , counter :: Int64
--- }
 
--- decCdf :: Ord a => Num a => a -> CdfCounter -> CdfCounter
--- decCdf v cdf =
---   if v < fromIntegral (limit cdf)
---     then cdf {counter = counter cdf - 1}
---     else cdf
 
--- incCdf ::Ord a => Num a => a -> CdfCounter -> CdfCounter
--- incCdf v cdf =
---   if v < fromIntegral (limit cdf)
---     then cdf {counter = counter cdf + 1}
---     else cdf
+-- severityBlockFetchServer ::
+--      TraceBlockFetchServerEvent blk
+--   -> SeverityS
+-- severityBlockFetchServer _ = Info
 
--- data ClientMetrics = ClientMetrics {
---     cmSlotMap  :: IntPSQ Word64 NominalDiffTime
---   , cmCdf1sVar :: CdfCounter
---   , cmCdf3sVar :: CdfCounter
---   , cmCdf5sVar :: CdfCounter
---   , cmDelay    :: Double
---   , cmBlockSize :: Word32
---   , cmTraceIt  :: Bool
--- }
+-- namesForBlockFetchServer ::
+--      TraceBlockFetchServerEvent blk
+--   -> [Text]
+-- namesForBlockFetchServer TraceBlockFetchServerSendBlock {} = ["SendBlock"]
 
--- instance LogFormatting ClientMetrics where
---   forMachine _dtal _ = mempty
---   asMetrics ClientMetrics {..} =
---     if cmTraceIt
---       then
---         let  size = Pq.size cmSlotMap
---              msgs =
---                [ DoubleM
---                     "Blockfetch.Client.Blockdelay"
---                     cmDelay
---                , IntM
---                     "Blockfetch.Client.Blocksize"
---                     (fromIntegral cmBlockSize)
---                , DoubleM "Blockfetch.Client.Blockdelay.cdfOne"
---                     (fromIntegral (counter cmCdf1sVar) / fromIntegral size)
---                , DoubleM "Blockfetch.Client.Blockdelay.cdfThree"
---                     (fromIntegral (counter cmCdf3sVar) / fromIntegral size)
---                , DoubleM "Blockfetch.Client.Blockdelay.cdfFive"
---                     (fromIntegral (counter cmCdf5sVar) / fromIntegral size)
---                ]
---         in if cmDelay > 5
---              then
---                CounterM "Blockfetch.Client.Lateblocks" Nothing
---                  : msgs
---              else msgs
---       else []
 
--- initialClientMetrics :: ClientMetrics
--- initialClientMetrics =
---     ClientMetrics
---       Pq.empty
---       (CdfCounter 1 0)
---       (CdfCounter 3 0)
---       (CdfCounter 5 0)
---       0
---       0
---       False
 
--- calculateBlockFetchClientMetrics ::
---      ClientMetrics
---   -> LoggingContext
---   -> BlockFetch.TraceLabelPeer peer (BlockFetch.TraceFetchClientState header)
---   -> IO ClientMetrics
--- calculateBlockFetchClientMetrics cm@ClientMetrics {..} _lc
---             (TraceLabelPeer _ (BlockFetch.CompletedBlockFetch p _ _ _ forgeDelay blockSize)) =
---     case pointSlot p of
---             Origin -> pure cm {cmTraceIt = False}  -- Nothing to do.
---             At (SlotNo slotNo) -> do
---                if Pq.null cmSlotMap && forgeDelay > 20
---                   then pure cm {cmTraceIt = False} -- During startup wait until we are in sync
---                   else case Pq.lookup (fromIntegral slotNo) cmSlotMap of
---                         Just _ -> pure cm {cmTraceIt = False}  -- dupe, we only track the first
---                         Nothing -> do
---                           let slotMap' = Pq.insert (fromIntegral slotNo) slotNo forgeDelay cmSlotMap
---                           if Pq.size slotMap' > 1080 -- TODO k/2, should come from config file
---                             then case Pq.minView slotMap' of
---                                  Nothing -> pure cm {cmTraceIt = False} -- Err. We just inserted an element!
---                                  Just (_, minSlotNo, minDelay, slotMap'') ->
---                                    if minSlotNo == slotNo
---                                       then pure cm {cmTraceIt = False, cmSlotMap = slotMap'}
---                                       else let
---                                          cdf1sVar = decCdf minDelay cmCdf1sVar
---                                          cdf3sVar = decCdf minDelay cmCdf3sVar
---                                          cdf5sVar = decCdf minDelay cmCdf5sVar
---                                          cdf1sVar' = incCdf forgeDelay cdf1sVar
---                                          cdf3sVar' = incCdf forgeDelay cdf3sVar
---                                          cdf5sVar' = incCdf forgeDelay cdf5sVar
---                                          in pure cm {
---                                               cmCdf1sVar  = cdf1sVar'
---                                             , cmCdf3sVar  = cdf3sVar'
---                                             , cmCdf5sVar  = cdf5sVar'
---                                             , cmDelay     = realToFrac  forgeDelay
---                                             , cmBlockSize = blockSize
---                                             , cmTraceIt   = True
---                                             , cmSlotMap   = slotMap''}
---                             else let
---                                cdf1sVar' = incCdf forgeDelay cmCdf1sVar
---                                cdf3sVar' = incCdf forgeDelay cmCdf3sVar
---                                cdf5sVar' = incCdf forgeDelay cmCdf5sVar
---                                 -- -- Wait until we have at least 45 samples before we start providing
---                                 -- -- cdf estimates.
---                                in if Pq.size slotMap' >= 45
---                                     then pure cm {
---                                          cmCdf1sVar  = cdf1sVar'
---                                        , cmCdf3sVar  = cdf3sVar'
---                                        , cmCdf5sVar  = cdf5sVar'
---                                        , cmDelay     = realToFrac forgeDelay
---                                        , cmBlockSize = blockSize
---                                        , cmTraceIt   = True
---                                        , cmSlotMap   = slotMap'}
---                                    else pure cm {
---                                         cmCdf1sVar  = cdf1sVar'
---                                       , cmCdf3sVar  = cdf3sVar'
---                                       , cmCdf5sVar  = cdf5sVar'
---                                       , cmTraceIt   = False
---                                       , cmSlotMap   = slotMap'}
+-- docBlockFetchServer ::
+--   Documented (TraceBlockFetchServerEvent blk)
+-- docBlockFetchServer = addDocumentedNamespace [] docBlockFetchServer'
 
--- calculateBlockFetchClientMetrics cm _lc _ = pure cm
 
--- docBlockFetchClientMetrics :: Documented (BlockFetch.TraceLabelPeer peer (BlockFetch.TraceFetchClientState header))
--- docBlockFetchClientMetrics = Documented [
+-- docBlockFetchServer' ::
+--   Documented (TraceBlockFetchServerEvent blk)
+-- docBlockFetchServer' = Documented [
 --     DocMsg
---       ["ClientMetrics"]
---       [ ("Blockfetch.Client.Blockdelay", "")
---       , ("Blockfetch.Client.Blocksize", "")
---       , ("Blockfetch.Client.Blockdelay.cdfOne", "")
---       , ("Blockfetch.Client.Blockdelay.cdfThree", "")
---       , ("Blockfetch.Client.Blockdelay.cdfFive", "")
---       ]
---       ""
---     ]
-
--- severityBlockFetchClient ::
---      BlockFetch.TraceLabelPeer peer (BlockFetch.TraceFetchClientState header)
---   -> SeverityS
--- severityBlockFetchClient (BlockFetch.TraceLabelPeer _p bf) = severityBlockFetchClient' bf
-
--- severityBlockFetchClient' ::
---      BlockFetch.TraceFetchClientState header
---   -> SeverityS
--- severityBlockFetchClient' BlockFetch.AddedFetchRequest {}        = Info
--- severityBlockFetchClient' BlockFetch.AcknowledgedFetchRequest {} = Info
--- severityBlockFetchClient' BlockFetch.SendFetchRequest {}         = Info
--- severityBlockFetchClient' BlockFetch.StartedFetchBatch {}        = Info
--- severityBlockFetchClient' BlockFetch.CompletedBlockFetch {}      = Info
--- severityBlockFetchClient' BlockFetch.CompletedFetchBatch {}      = Info
--- severityBlockFetchClient' BlockFetch.RejectedFetchBatch {}       = Info
--- severityBlockFetchClient' BlockFetch.ClientTerminating {}        = Notice
-
--- namesForBlockFetchClient ::
---     BlockFetch.TraceLabelPeer peer (BlockFetch.TraceFetchClientState header)
---   -> [Text]
--- namesForBlockFetchClient (BlockFetch.TraceLabelPeer _p bf) = namesForBlockFetchClient' bf
-
--- namesForBlockFetchClient' ::
---     BlockFetch.TraceFetchClientState header
---   -> [Text]
--- namesForBlockFetchClient' BlockFetch.AddedFetchRequest {} =
---   ["AddedFetchRequest"]
--- namesForBlockFetchClient' BlockFetch.AcknowledgedFetchRequest {}  =
---   ["AcknowledgedFetchRequest"]
--- namesForBlockFetchClient' BlockFetch.SendFetchRequest {} =
---   ["SendFetchRequest"]
--- namesForBlockFetchClient' BlockFetch.StartedFetchBatch {} =
---   ["StartedFetchBatch"]
--- namesForBlockFetchClient' BlockFetch.CompletedFetchBatch {} =
---   ["CompletedFetchBatch"]
--- namesForBlockFetchClient' BlockFetch.CompletedBlockFetch  {} =
---   ["CompletedBlockFetch"]
--- namesForBlockFetchClient' BlockFetch.RejectedFetchBatch  {} =
---   ["RejectedFetchBatch"]
--- namesForBlockFetchClient' BlockFetch.ClientTerminating {} =
---   ["ClientTerminating"]
+--       ["SendBlock"]
+--       [("BlockFetch.BlocksServed", "")]
+--       "The server sent a block to the peer."
+--   ]
 
 
--- instance (HasHeader header, ConvertRawHash header) =>
---   LogFormatting (BlockFetch.TraceFetchClientState header) where
---   forMachine _dtal BlockFetch.AddedFetchRequest {} =
---     mconcat [ "kind" .= String "AddedFetchRequest" ]
---   forMachine _dtal BlockFetch.AcknowledgedFetchRequest {} =
---     mconcat [ "kind" .= String "AcknowledgedFetchRequest" ]
---   forMachine _dtal (BlockFetch.SendFetchRequest af _) =
---     mconcat [ "kind" .= String "SendFetchRequest"
---             , "head" .= String (renderChainHash
---                                  (renderHeaderHash (Proxy @header))
---                                  (AF.headHash af))
---             , "length" .= toJSON (fragmentLength af)]
---    where
---      -- NOTE: this ignores the Byron era with its EBB complication:
---      -- the length would be underestimated by 1, if the AF is anchored
---      -- at the epoch boundary.
---      fragmentLength :: AF.AnchoredFragment header -> Int
---      fragmentLength f = fromIntegral . unBlockNo $
---         case (f, f) of
---           (AS.Empty{}, AS.Empty{}) -> 0
---           (firstHdr AS.:< _, _ AS.:> lastHdr) ->
---             blockNo lastHdr - blockNo firstHdr + 1
---   forMachine _dtal (BlockFetch.CompletedBlockFetch pt _ _ _ delay blockSize) =
---     mconcat [ "kind"  .= String "CompletedBlockFetch"
---             , "delay" .= (realToFrac delay :: Double)
---             , "size"  .= blockSize
---             , "block" .= String
---               (case pt of
---                  GenesisPoint -> "Genesis"
---                  BlockPoint _ h -> renderHeaderHash (Proxy @header) h)
---             ]
---   forMachine _dtal BlockFetch.CompletedFetchBatch {} =
---     mconcat [ "kind" .= String "CompletedFetchBatch" ]
---   forMachine _dtal BlockFetch.StartedFetchBatch {} =
---     mconcat [ "kind" .= String "StartedFetchBatch" ]
---   forMachine _dtal BlockFetch.RejectedFetchBatch {} =
---     mconcat [ "kind" .= String "RejectedFetchBatch" ]
---   forMachine _dtal (BlockFetch.ClientTerminating outstanding) =
---     mconcat [ "kind" .= String "ClientTerminating"
---             , "outstanding" .= outstanding
---             ]
+
 
 
 -- docBlockFetchClient ::
@@ -674,161 +805,53 @@ module Cardano.Node.Tracing.Tracers.Consensus () where
 --       \ requests."
 --   ]
 
--- --------------------------------------------------------------------------------
--- -- BlockFetchServer Tracer
--- --------------------------------------------------------------------------------
-
--- severityBlockFetchServer ::
---      TraceBlockFetchServerEvent blk
---   -> SeverityS
--- severityBlockFetchServer _ = Info
-
--- namesForBlockFetchServer ::
---      TraceBlockFetchServerEvent blk
---   -> [Text]
--- namesForBlockFetchServer TraceBlockFetchServerSendBlock {} = ["SendBlock"]
-
--- instance ConvertRawHash blk => LogFormatting (TraceBlockFetchServerEvent blk) where
---   forMachine _dtal (TraceBlockFetchServerSendBlock blk) =
---     mconcat [ "kind" .= String "BlockFetchServer"
---              , "block" .= String (renderChainHash
---                                     @blk
---                                     (renderHeaderHash (Proxy @blk))
---                                     $ pointHash blk)]
--- -- TODO JNF
---   asMetrics (TraceBlockFetchServerSendBlock _p) =
---     [CounterM "BlockFetch.BlocksServed" Nothing]
 
 
--- docBlockFetchServer ::
---   Documented (TraceBlockFetchServerEvent blk)
--- docBlockFetchServer = addDocumentedNamespace [] docBlockFetchServer'
+-- severityChainSyncServerEvent :: TraceChainSyncServerEvent blk -> SeverityS
+-- severityChainSyncServerEvent (TraceChainSyncServerUpdate _tip _upd _blocking enclosing) =
+--     case enclosing of
+--       RisingEdge  -> Info
+--       FallingEdge -> Debug
 
 
--- docBlockFetchServer' ::
---   Documented (TraceBlockFetchServerEvent blk)
--- docBlockFetchServer' = Documented [
+-- -- | Metrics documented here, but implemented specially
+-- docChainSyncServerEventHeader :: Documented (TraceChainSyncServerEvent blk)
+-- docChainSyncServerEventHeader = Documented [
 --     DocMsg
---       ["SendBlock"]
---       [("BlockFetch.BlocksServed", "")]
---       "The server sent a block to the peer."
+--       ["Update"]
+--       [("ChainSync.HeadersServed", "A counter triggered on any header event")
+--       ,("ChainSync.HeadersServed.Falling", "A counter triggered only on header event with falling edge")]
+--       "A server read has occurred, either for an add block or a rollback"
 --   ]
 
+-- docChainSyncServerEventBlock :: Documented (TraceChainSyncServerEvent blk)
+-- docChainSyncServerEventBlock =
+--     addDocumentedNamespace
+--       []
+--       docChainSyncServerEventBlock'
 
--- --------------------------------------------------------------------------------
--- -- TxInbound Tracer
--- --------------------------------------------------------------------------------
-
--- severityTxInbound ::
---     BlockFetch.TraceLabelPeer peer (TraceTxSubmissionInbound (GenTxId blk) (GenTx blk))
---   -> SeverityS
--- severityTxInbound (BlockFetch.TraceLabelPeer _p ti) = severityTxInbound' ti
-
--- severityTxInbound' ::
---     TraceTxSubmissionInbound (GenTxId blk) (GenTx blk)
---   -> SeverityS
--- severityTxInbound' TraceTxSubmissionCollected {}         = Debug
--- severityTxInbound' TraceTxSubmissionProcessed {}         = Debug
--- severityTxInbound' TraceTxInboundTerminated              = Notice
--- severityTxInbound' TraceTxInboundCannotRequestMoreTxs {} = Debug
--- severityTxInbound' TraceTxInboundCanRequestMoreTxs {}    = Debug
-
--- namesForTxInbound ::
---     BlockFetch.TraceLabelPeer peer (TraceTxSubmissionInbound (GenTxId blk) (GenTx blk))
---   -> [Text]
--- namesForTxInbound (BlockFetch.TraceLabelPeer _p ti) = namesForTxInbound' ti
-
--- namesForTxInbound' ::
---     TraceTxSubmissionInbound (GenTxId blk) (GenTx blk)
---   -> [Text]
--- namesForTxInbound' (TraceTxSubmissionCollected _) =
---     ["Collected"]
--- namesForTxInbound' (TraceTxSubmissionProcessed _) =
---     ["Processed"]
--- namesForTxInbound' TraceTxInboundTerminated   =
---     ["Terminated"]
--- namesForTxInbound' TraceTxInboundCanRequestMoreTxs {} =
---     ["CanRequestMoreTxs"]
--- namesForTxInbound' TraceTxInboundCannotRequestMoreTxs {} =
---     ["CannotRequestMoreTxs"]
-
--- instance LogFormatting (TraceTxSubmissionInbound txid tx) where
---   forMachine _dtal (TraceTxSubmissionCollected count) =
---     mconcat
---       [ "kind" .= String "TraceTxSubmissionCollected"
---       , "count" .= toJSON count
---       ]
---   forMachine _dtal (TraceTxSubmissionProcessed processed) =
---     mconcat
---       [ "kind" .= String "TraceTxSubmissionProcessed"
---       , "accepted" .= toJSON (ptxcAccepted processed)
---       , "rejected" .= toJSON (ptxcRejected processed)
---       ]
---   forMachine _dtal TraceTxInboundTerminated =
---     mconcat
---       [ "kind" .= String "TraceTxInboundTerminated"
---       ]
---   forMachine _dtal (TraceTxInboundCanRequestMoreTxs count) =
---     mconcat
---       [ "kind" .= String "TraceTxInboundCanRequestMoreTxs"
---       , "count" .= toJSON count
---       ]
---   forMachine _dtal (TraceTxInboundCannotRequestMoreTxs count) =
---     mconcat
---       [ "kind" .= String "TraceTxInboundCannotRequestMoreTxs"
---       , "count" .= toJSON count
---       ]
-
---   asMetrics (TraceTxSubmissionCollected count)=
---     [CounterM "TxSubmission.Submitted" (Just count)]
---   asMetrics (TraceTxSubmissionProcessed processed) =
---     [ CounterM "TxSubmission.Accepted"
---         (Just (ptxcAccepted processed))
---     , CounterM "TxSubmission.Rejected"
---         (Just (ptxcRejected processed))
---     ]
---   asMetrics _ = []
-
--- docTxInbound ::
---   Documented (BlockFetch.TraceLabelPeer remotePeer
---     (TraceTxSubmissionInbound txid tx))
--- docTxInbound = addDocumentedNamespace [] docTxInbound'
-
--- docTxInbound' ::
---   Documented (BlockFetch.TraceLabelPeer remotePeer
---     (TraceTxSubmissionInbound txid tx))
--- docTxInbound' = Documented [
+-- docChainSyncServerEventBlock' :: Documented (TraceChainSyncServerEvent blk)
+-- docChainSyncServerEventBlock' = Documented [
 --     DocMsg
---     ["Collected"]
---     [ ("TxSubmission.Submitted", "")]
---     "Number of transactions just about to be inserted."
---   ,
---     DocMsg
---     ["Processed"]
---     [ ("TxSubmission.Accepted", "")
---     , ("TxSubmission.Rejected", "")
---     ]
---     "Just processed transaction pass/fail breakdown."
---   ,
---     DocMsg
---     ["Terminated"]
---     []
---     "Server received 'MsgDone'."
---   ,
---     DocMsg
---     ["CanRequestMoreTxs"]
---     []
---     "There are no replies in flight, but we do know some more txs we\
---     \ can ask for, so lets ask for them and more txids."
---   ,
---     DocMsg
---     ["CannotRequestMoreTxs"]
---     []
---     "There's no replies in flight, and we have no more txs we can\
---     \ ask for so the only remaining thing to do is to ask for more\
---     \ txids. Since this is the only thing to do now, we make this a\
---     \ blocking call."
+--       ["Update"]
+--       []
+--       "A server read has occurred, either for an add block or a rollback"
 --   ]
+
+-- docBlockFetchClientMetrics :: Documented (BlockFetch.TraceLabelPeer peer (BlockFetch.TraceFetchClientState header))
+-- docBlockFetchClientMetrics = Documented [
+--     DocMsg
+--       ["ClientMetrics"]
+--       [ ("Blockfetch.Client.Blockdelay", "")
+--       , ("Blockfetch.Client.Blocksize", "")
+--       , ("Blockfetch.Client.Blockdelay.cdfOne", "")
+--       , ("Blockfetch.Client.Blockdelay.cdfThree", "")
+--       , ("Blockfetch.Client.Blockdelay.cdfFive", "")
+--       ]
+--       ""
+--     ]
+
+--
 
 
 -- --------------------------------------------------------------------------------
