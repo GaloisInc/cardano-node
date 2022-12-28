@@ -142,7 +142,7 @@ instance MetaTrace (TraceForgeEvent blk) where
     \\n\
     \See also <https://github.com/input-output-hk/ouroboros-network/issues/1462>"
   documentFor _ns = Nothing
-  metricsDocFor (Namespace _ _) = Just []
+  metricsDocFor (Namespace _ _) = []
   allNamespaces = [ Namespace [] ["StartLeadershipCheck"]
                   , Namespace [] ["SlotIsImmutable"]
                   , Namespace [] ["BlockFromFuture"]]

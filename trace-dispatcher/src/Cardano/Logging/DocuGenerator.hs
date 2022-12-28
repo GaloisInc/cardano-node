@@ -252,7 +252,7 @@ documentTracersRun tracers = do
                           idx
                           ((emptyLogDoc
                               (fromMaybe mempty (documentFor ns))
-                              (fromMaybe mempty (metricsDocFor ns)))
+                              (metricsDocFor ns))
                             { ldSeverityCoded = severityFor ns Nothing
                             , ldPrivacyCoded  = privacyFor ns Nothing
                             , ldDetailsCoded  = detailsFor ns Nothing

@@ -131,8 +131,8 @@ class MetaTrace a where
   detailsFor _  _ =  Just DNormal
 
   documentFor   :: Namespace a -> Maybe Text
-  metricsDocFor :: Namespace a -> Maybe [(Text,Text)]
-  metricsDocFor _ = Just []
+  metricsDocFor :: Namespace a -> [(Text,Text)]
+  metricsDocFor _ = []
   allNamespaces :: [Namespace a]
 
 data Metric
