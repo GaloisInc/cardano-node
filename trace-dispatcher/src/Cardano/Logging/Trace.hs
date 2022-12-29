@@ -68,7 +68,7 @@ filterTrace :: (Monad m)
   => ((LoggingContext, a) -> Bool)
   -> Trace m a
   -> Trace m a
-filterTrace ff (Trace tr) = Trace $ T.arrow $ T.emit $ mkTrace
+filterTrace ff (Trace tr) = Trace $ T.arrow $ T.emit mkTrace
   where
     mkTrace (lc, Right a) =
       if ff (lc, a)
@@ -88,7 +88,7 @@ filterTrace ff (Trace tr) = Trace $ T.arrow $ T.emit $ mkTrace
 filterTraceMaybe :: Monad m
   => Trace m a
   -> Trace m (Maybe a)
-filterTraceMaybe (Trace tr) = Trace $ T.arrow $ T.emit $ mkTrace
+filterTraceMaybe (Trace tr) = Trace $ T.arrow $ T.emit mkTrace
   where
     mkTrace (lc, Right (Just m))  = T.traceWith tr (lc, Right m)
     mkTrace (_lc, Right Nothing)  = pure ()
