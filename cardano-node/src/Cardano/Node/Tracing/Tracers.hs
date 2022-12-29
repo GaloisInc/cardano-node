@@ -22,8 +22,9 @@ import           Cardano.Node.Tracing.Formatting ()
 import           Cardano.Node.Tracing.Tracers.BlockReplayProgress
 import           Cardano.Node.Tracing.Tracers.ChainDB
 import           Cardano.Node.Tracing.Tracers.Consensus
+import           Cardano.Node.Tracing.Tracers.ConsensusStartupException
 import           Cardano.Node.Tracing.Tracers.Diffusion
--- import           Cardano.Node.Tracing.Tracers.ForgingThreadStats (docForgeStats, forgeThreadStats)
+import           Cardano.Node.Tracing.Tracers.ForgingThreadStats (forgeThreadStats)
 import           Cardano.Node.Tracing.Tracers.KESInfo
 import           Cardano.Node.Tracing.Tracers.NodeToClient
 import           Cardano.Node.Tracing.Tracers.NodeToNode
@@ -264,64 +265,47 @@ mkConsensusTracers trBase trForward mbTrEKG _trDataPoint trConfig nodeKernel = d
                 ["TxSubmission", "TxInbound"]
     configureTracers trConfig [txInboundTr]
 
-    -- txOutboundTr  <- mkCardanoTracer
-    --             trBase trForward mbTrEKG
-    --             ["TxSubmission", "TxOutbound"]
-    --             namesForTxOutbound
-    --             severityTxOutbound
-    --             allPublic
-    -- configureTracers trConfig docTxOutbound [txOutboundTr]
-    -- localTxSubmissionServerTr <- mkCardanoTracer
-    --             trBase trForward mbTrEKG
-    --             ["TxSubmission", "LocalServer"]
-    --             namesForLocalTxSubmissionServer
-    --             severityLocalTxSubmissionServer
-    --             allPublic
-    -- configureTracers trConfig docLocalTxSubmissionServer [localTxSubmissionServerTr]
-    -- mempoolTr   <- mkCardanoTracer
-    --             trBase trForward mbTrEKG
-    --             ["Mempool"]
-    --             namesForMempool
-    --             severityMempool
-    --             allPublic
-    -- configureTracers trConfig docMempool [mempoolTr]
-    -- forgeTr    <- mkCardanoTracer'
-    --             trBase trForward mbTrEKG
-    --             ["Forge", "Loop"]
-    --             namesForForge
-    --             severityForge
-    --             allPublic
-    --             (forgeTracerTransform nodeKernel)
-    -- forgeThreadStatsTr <- mkCardanoTracer'
-    --             trBase trForward mbTrEKG
-    --             ["Forge", "Stats"]
-    --             namesForForge2
-    --             severityForge2
-    --             allPublic
-    --             forgeThreadStats
-    -- configureTracers trConfig docForge [forgeTr]
-    -- configureTracers trConfig docForgeStats [forgeThreadStatsTr]
-    -- blockchainTimeTr   <- mkCardanoTracer
-    --             trBase trForward mbTrEKG
-    --             ["BlockchainTime"]
-    --             namesForBlockchainTime
-    --             severityBlockchainTime
-    --             allPublic
-    -- configureTracers trConfig docBlockchainTime [blockchainTimeTr]
-    -- keepAliveClientTr  <- mkCardanoTracer
-    --             trBase trForward mbTrEKG
-    --             ["Net", "KeepAliveClient"]
-    --             namesForKeepAliveClient
-    --             severityKeepAliveClient
-    --             allPublic
-    -- configureTracers trConfig docKeepAliveClient [keepAliveClientTr]
-    -- consensusStartupErrorTr <- mkCardanoTracer
-    --             trBase trForward mbTrEKG
-    --             ["Consensus", "Startup"]
-    --             namesConsensusStartupError
-    --             severityConsensusStartupError
-    --             allPublic
-    -- configureTracers trConfig docConsensusStartupError [consensusStartupErrorTr]
+    txOutboundTr  <- mkCardanoTracer
+                trBase trForward mbTrEKG
+                ["TxSubmission", "TxOutbound"]
+    configureTracers trConfig [txOutboundTr]
+
+    localTxSubmissionServerTr <- mkCardanoTracer
+                trBase trForward mbTrEKG
+                ["TxSubmission", "LocalServer"]
+    configureTracers trConfig [localTxSubmissionServerTr]
+
+    mempoolTr   <- mkCardanoTracer
+                trBase trForward mbTrEKG
+                ["Mempool"]
+    configureTracers trConfig [mempoolTr]
+
+    forgeTr    <- mkCardanoTracer'
+                trBase trForward mbTrEKG
+                ["Forge", "Loop"]
+                (forgeTracerTransform nodeKernel)
+    configureTracers trConfig [forgeTr]
+
+    forgeThreadStatsTr <- mkCardanoTracer'
+                trBase trForward mbTrEKG
+                ["Forge", "Stats"]
+                forgeThreadStats
+    configureTracers trConfig [forgeThreadStatsTr]
+
+    blockchainTimeTr   <- mkCardanoTracer
+                trBase trForward mbTrEKG
+                ["BlockchainTime"]
+    configureTracers trConfig [blockchainTimeTr]
+
+    keepAliveClientTr  <- mkCardanoTracer
+                trBase trForward mbTrEKG
+                ["Net"]
+    configureTracers trConfig [keepAliveClientTr]
+
+    consensusStartupErrorTr <- mkCardanoTracer
+                trBase trForward mbTrEKG
+                ["Consensus", "Startup"]
+    configureTracers trConfig [consensusStartupErrorTr]
 
     pure $ Consensus.Tracers
       { Consensus.chainSyncClientTracer = Tracer $
@@ -342,22 +326,22 @@ mkConsensusTracers trBase trForward mbTrEKG _trDataPoint trConfig nodeKernel = d
           traceWith (traceAsKESInfo (Proxy @blk) forgeKESInfoTr)
       , Consensus.txInboundTracer = Tracer $
            traceWith txInboundTr
-      -- , Consensus.txOutboundTracer = Tracer $
-      --     traceWith txOutboundTr
-      -- , Consensus.localTxSubmissionServerTracer = Tracer $
-      --     traceWith localTxSubmissionServerTr
-      -- , Consensus.mempoolTracer = Tracer $
-      --     traceWith mempoolTr
-      -- , Consensus.forgeTracer =
-      --     Tracer (\(Consensus.TraceLabelCreds _ x) -> traceWith (contramap Left forgeTr) x)
-      --     <> -- TODO: add the forge-thread-stats as a datapoint
-      --     Tracer (\(Consensus.TraceLabelCreds _ x) -> traceWith (contramap Left forgeThreadStatsTr) x)
-      -- , Consensus.blockchainTimeTracer = Tracer $
-      --     traceWith blockchainTimeTr
-      -- , Consensus.keepAliveClientTracer = Tracer $
-      --     traceWith keepAliveClientTr
-      -- , Consensus.consensusStartupErrorTracer = Tracer $
-      --     traceWith consensusStartupErrorTr . ConsensusStartupException
+      , Consensus.txOutboundTracer = Tracer $
+          traceWith txOutboundTr
+      , Consensus.localTxSubmissionServerTracer = Tracer $
+          traceWith localTxSubmissionServerTr
+      , Consensus.mempoolTracer = Tracer $
+          traceWith mempoolTr
+      , Consensus.forgeTracer =
+           Tracer (\(Consensus.TraceLabelCreds _ x) -> traceWith (contramap Left forgeTr) x)
+           <> -- TODO: add the forge-thread-stats as a datapoint
+           Tracer (\(Consensus.TraceLabelCreds _ x) -> traceWith (contramap Left forgeThreadStatsTr) x)
+      , Consensus.blockchainTimeTracer = Tracer $
+          traceWith blockchainTimeTr
+      , Consensus.keepAliveClientTracer = Tracer $
+          traceWith keepAliveClientTr
+      , Consensus.consensusStartupErrorTracer = Tracer $
+          traceWith consensusStartupErrorTr . ConsensusStartupException
       }
 
 -- mkNodeToClientTracers :: forall blk.

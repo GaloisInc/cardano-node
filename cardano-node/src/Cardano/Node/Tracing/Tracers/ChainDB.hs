@@ -13,6 +13,7 @@ module Cardano.Node.Tracing.Tracers.ChainDB
    ) where
 
 import           Data.Aeson (Value (String), toJSON, (.=))
+import qualified Data.Aeson as Aeson
 import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Text
 import           Numeric (showFFloat)
@@ -27,8 +28,13 @@ import           Cardano.Node.Tracing.Render
 import           Cardano.Prelude hiding (Show, show, trace)
 
 import           Ouroboros.Consensus.Block
+import           Ouroboros.Consensus.HeaderValidation (HeaderEnvelopeError (..), HeaderError (..),
+                   OtherHeaderEnvelopeError)
+import           Ouroboros.Consensus.Ledger.Abstract (LedgerError)
+import           Ouroboros.Consensus.Ledger.Extended (ExtValidationError (..))
 import           Ouroboros.Consensus.Ledger.Inspect (InspectLedger, LedgerEvent (..))
 import           Ouroboros.Consensus.Ledger.SupportsProtocol (LedgerSupportsProtocol)
+import           Ouroboros.Consensus.Protocol.Abstract (ValidationErr)
 import qualified Ouroboros.Consensus.Protocol.PBFT as PBFT
 import qualified Ouroboros.Consensus.Storage.ChainDB as ChainDB
 import qualified Ouroboros.Consensus.Storage.ImmutableDB as ImmDB
@@ -38,7 +44,9 @@ import qualified Ouroboros.Consensus.Storage.LedgerDB.OnDisk as LedgerDB
 import           Ouroboros.Consensus.Storage.LedgerDB.Types (UpdateLedgerDbTraceEvent (..))
 import qualified Ouroboros.Consensus.Storage.LedgerDB.Types as LedgerDB
 import qualified Ouroboros.Consensus.Storage.VolatileDB as VolDB
+import           Ouroboros.Consensus.Util.Condense (condense)
 import           Ouroboros.Consensus.Util.Enclose
+
 
 import qualified Ouroboros.Network.AnchoredFragment as AF
 
@@ -1992,62 +2000,59 @@ instance LogFormatting LedgerDB.DiskSnapshot where
   forMachine _ _snap = mconcat [ "kind" .= String "snapshot" ]
 
 
--- instance ( StandardHash blk
---          , LogFormatting (ValidationErr (BlockProtocol blk))
---          , LogFormatting (OtherHeaderEnvelopeError blk)
---          )
---       => LogFormatting (HeaderError blk) where
---   forMachine dtal (HeaderProtocolError err) =
---     mconcat
---       [ "kind" .= String "HeaderProtocolError"
---       , "error" .= forMachine dtal err
---       ]
---   forMachine dtal (HeaderEnvelopeError err) =
---     mconcat
---       [ "kind" .= String "HeaderEnvelopeError"
---       , "error" .= forMachine dtal err
---       ]
+instance ( StandardHash blk
+         , LogFormatting (ValidationErr (BlockProtocol blk))
+         , LogFormatting (OtherHeaderEnvelopeError blk)
+         )
+      => LogFormatting (HeaderError blk) where
+  forMachine dtal (HeaderProtocolError err) =
+    mconcat
+      [ "kind" .= String "HeaderProtocolError"
+      , "error" .= forMachine dtal err
+      ]
+  forMachine dtal (HeaderEnvelopeError err) =
+    mconcat
+      [ "kind" .= String "HeaderEnvelopeError"
+      , "error" .= forMachine dtal err
+      ]
 
--- instance ( StandardHash blk
---          , LogFormatting (OtherHeaderEnvelopeError blk)
---          )
---       => LogFormatting (HeaderEnvelopeError blk) where
---   forMachine _dtal (UnexpectedBlockNo expect act) =
---     mconcat
---       [ "kind" .= String "UnexpectedBlockNo"
---       , "expected" .= condense expect
---       , "actual" .= condense act
---       ]
---   forMachine _dtal (UnexpectedSlotNo expect act) =
---     mconcat
---       [ "kind" .= String "UnexpectedSlotNo"
---       , "expected" .= condense expect
---       , "actual" .= condense act
---       ]
---   forMachine _dtal (UnexpectedPrevHash expect act) =
---     mconcat
---       [ "kind" .= String "UnexpectedPrevHash"
---       , "expected" .= String (Text.pack $ show expect)
---       , "actual" .= String (Text.pack $ show act)
---       ]
---   forMachine dtal (OtherHeaderEnvelopeError err) =
---     forMachine dtal err
-
-
--- instance (   LogFormatting (LedgerError blk)
---            , LogFormatting (HeaderError blk))
---         => LogFormatting (ExtValidationError blk) where
---     forMachine dtal (ExtValidationErrorLedger err) = forMachine dtal err
---     forMachine dtal (ExtValidationErrorHeader err) = forMachine dtal err
-
---     forHuman (ExtValidationErrorLedger err) =  forHuman err
---     forHuman (ExtValidationErrorHeader err) =  forHuman err
-
---     asMetrics (ExtValidationErrorLedger err) =  asMetrics err
---     asMetrics (ExtValidationErrorHeader err) =  asMetrics err
+instance ( StandardHash blk
+         , LogFormatting (OtherHeaderEnvelopeError blk)
+         )
+      => LogFormatting (HeaderEnvelopeError blk) where
+  forMachine _dtal (UnexpectedBlockNo expect act) =
+    mconcat
+      [ "kind" .= String "UnexpectedBlockNo"
+      , "expected" .= condense expect
+      , "actual" .= condense act
+      ]
+  forMachine _dtal (UnexpectedSlotNo expect act) =
+    mconcat
+      [ "kind" .= String "UnexpectedSlotNo"
+      , "expected" .= condense expect
+      , "actual" .= condense act
+      ]
+  forMachine _dtal (UnexpectedPrevHash expect act) =
+    mconcat
+      [ "kind" .= String "UnexpectedPrevHash"
+      , "expected" .= String (Text.pack $ show expect)
+      , "actual" .= String (Text.pack $ show act)
+      ]
+  forMachine dtal (OtherHeaderEnvelopeError err) =
+    forMachine dtal err
 
 
+instance (   LogFormatting (LedgerError blk)
+           , LogFormatting (HeaderError blk))
+        => LogFormatting (ExtValidationError blk) where
+    forMachine dtal (ExtValidationErrorLedger err) = forMachine dtal err
+    forMachine dtal (ExtValidationErrorHeader err) = forMachine dtal err
 
+    forHuman (ExtValidationErrorLedger err) =  forHuman err
+    forHuman (ExtValidationErrorHeader err) =  forHuman err
+
+    asMetrics (ExtValidationErrorLedger err) =  asMetrics err
+    asMetrics (ExtValidationErrorHeader err) =  asMetrics err
 
 instance (Show (PBFT.PBftVerKeyHash c))
       => LogFormatting (PBFT.PBftValidationErr c) where
@@ -2085,22 +2090,22 @@ instance (Show (PBFT.PBftVerKeyHash c))
       , "numForged" .= numForged
       ]
 
--- instance ( ConvertRawHash blk
---          , StandardHash blk
---          , LogFormatting (LedgerError blk)
---          , LogFormatting (RealPoint blk)
---          , LogFormatting (OtherHeaderEnvelopeError blk)
---          , LogFormatting (ExtValidationError blk)
---          , LogFormatting (ValidationErr (BlockProtocol blk))
---          )
---       => LogFormatting (ChainDB.InvalidBlockReason blk) where
---   forMachine dtal (ChainDB.ValidationError extvalerr) =
---     mconcat
---       [ "kind" .= String "ValidationError"
---       , "error" .= forMachine dtal extvalerr
---       ]
---   forMachine dtal (ChainDB.InFutureExceedsClockSkew point) =
---     mconcat
---       [ "kind" .= String "InFutureExceedsClockSkew"
---       , "point" .= forMachine dtal point
---       ]
+instance ( ConvertRawHash blk
+         , StandardHash blk
+         , LogFormatting (LedgerError blk)
+         , LogFormatting (RealPoint blk)
+         , LogFormatting (OtherHeaderEnvelopeError blk)
+         , LogFormatting (ExtValidationError blk)
+         , LogFormatting (ValidationErr (BlockProtocol blk))
+         )
+      => LogFormatting (ChainDB.InvalidBlockReason blk) where
+  forMachine dtal (ChainDB.ValidationError extvalerr) =
+    mconcat
+      [ "kind" .= String "ValidationError"
+      , "error" .= forMachine dtal extvalerr
+      ]
+  forMachine dtal (ChainDB.InFutureExceedsClockSkew point) =
+    mconcat
+      [ "kind" .= String "InFutureExceedsClockSkew"
+      , "point" .= forMachine dtal point
+      ]
