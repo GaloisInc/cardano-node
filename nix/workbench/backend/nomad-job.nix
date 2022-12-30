@@ -15,9 +15,20 @@ let
 
   # Container defaults: See ./oci-images.nix
   container_workdir = "/tmp/cluster";
-  container_supervisor_nix = "${container_workdir}/${stateDir}/supervisor/nix-store";
+  container_statedir = "${container_workdir}/${stateDir}";
+  container_supervisor_nix = "${container_statedir}/supervisor/nix-store";
+  # The problem is that if we use "127.0.0.1:9001" as parameter (without the
+  # "http" part) the container returns:
+  # error: <class 'ValueError'>, Unknown protocol for serverurl 127.0.0.1:9001: file: /nix/store/izqhlj5i1x9ldyn43d02kcy4mafmj3ci-python3.9-supervisor-4.2.4/lib/python3.9/site-packages/supervisor/xmlrpc.py line: 508
+  # Without using the `--serverurl` parameter at all (using INI config file's
+  # [inet_http_server] port stanza) also without "http://":
+  # error: <class 'socket.gaierror'>, [Errno -2] Name or service not known: file: /nix/store/hb1lzaisgx2m9n29hqhh6yp6hasplq1v-python3-3.9.10/lib/python3.9/socket.py line: 954
+  # If I add the "http" part to the INI file, when starting `supervisord` inside
+  # the container I get (from journald):
+  # Nov 02 11:44:36 hostname cluster-18f3852f-e067-6394-8159-66a7b8da2ecc[1088457]: Error: Cannot open an HTTP server: socket.error reported -2
+  # Nov 02 11:44:36 hostname cluster-18f3852f-e067-6394-8159-66a7b8da2ecc[1088457]: For help, use /nix/store/izqhlj5i1x9ldyn43d02kcy4mafmj3ci-python3.9-supervisor-4.2.4/bin/supervisord -h
   container_supervisord_url = "unix://${unixHttpServerPort}";
-  container_supervisord_conf = "${container_workdir}/${stateDir}/supervisor/supervisord.conf";
+  container_supervisord_conf = "${container_statedir}/supervisor/supervisord.conf";
   container_supervisord_loglevel = "info";
 
   # About the JSON Job Specification and its odd assumptions:
@@ -212,6 +223,8 @@ let
       # This makes it easier to change them using `jq` inside the workbench!
       meta = {
         # Only top level "KEY=STRING" are allowed!
+        WORKING_DIRECTORY = container_workdir;
+        STATE_DIRECTORY = container_statedir;
         SUPERVISOR_NIX = container_supervisor_nix;
         SUPERVISORD_URL = container_supervisord_url;
         SUPERVISORD_CONFIG = container_supervisord_conf;
