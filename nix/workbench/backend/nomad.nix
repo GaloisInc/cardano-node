@@ -68,7 +68,7 @@ let
     { stateDir, profileNix }:
       let
         unixHttpServerPort = "/tmp/supervisor.sock";
-        supervisorConfPath =
+        supervisorConf =
           import ./supervisor-conf.nix
             { inherit (profileNix) node-services;
               inherit pkgs lib stateDir;
@@ -87,10 +87,10 @@ let
               inherit profileNix;
               inherit (ociImages) clusterImage;
               inherit unixHttpServerPort;
+              inherit supervisorConf;
             };
       in pkgs.runCommand "workbench-backend-output-${profileNix.name}-${name}"
         (rec {
-          inherit supervisorConfPath;
           # All In One
           clusterImage = ociImages.clusterImage;
           clusterImageCopyToPodman = clusterImage.copyToPodman;
@@ -100,8 +100,6 @@ let
         })
         ''
         mkdir $out
-
-        ln -s $supervisorConfPath                      $out/supervisor.conf
 
         ln -s $clusterImage                            $out/clusterImage
         echo $clusterImageName                       > $out/clusterImageName

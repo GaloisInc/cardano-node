@@ -9,12 +9,17 @@
 , profileNix
 , clusterImage
 , unixHttpServerPort
+, supervisorConf
 }:
 
 let
 
-  # Container defaults: See ./oci-images.nix
-  container_workdir = "/tmp/cluster";
+  # Container defaults: See ./oci-images.nix for further details.
+  ## The template stanza can only generate files inside /local (NOMAD_TASK_DIR)
+  ## - https://developer.hashicorp.com/nomad/docs/job-specification/template#template-destinations
+  ## - https://developer.hashicorp.com/nomad/docs/runtime/environment#task-directories
+  ## - https://developer.hashicorp.com/nomad/docs/concepts/filesystem
+  container_workdir = "/local";
   container_statedir = "${container_workdir}/${stateDir}";
   container_supervisor_nix = "${container_statedir}/supervisor/nix-store";
   # The problem is that if we use "127.0.0.1:9001" as parameter (without the
@@ -347,26 +352,38 @@ let
           # Specifies the set of templates to render for the task. Templates can
           # be used to inject both static and dynamic configuration with data
           # populated from environment variables, Consul and Vault.
-          template = {
-            # podman container input environment variables.
-            env = true;
-            # File name to create inside the allocation directory.
-            destination = "envars";
-            # See runtime for available variables:
-            # https://developer.hashicorp.com/nomad/docs/runtime/environment
-            data = ''
-              SUPERVISOR_NIX="{{ env "NOMAD_META_SUPERVISOR_NIX" }}"
-              SUPERVISORD_URL="{{ env "NOMAD_META_SUPERVISORD_URL" }}"
-              SUPERVISORD_CONFIG="{{ env "NOMAD_META_SUPERVISORD_CONFIG" }}"
-              SUPERVISORD_LOGLEVEL="{{ env "NOMAD_META_SUPERVISORD_LOGLEVEL" }}"
-            '';
-            # Specifies the behavior Nomad should take if the rendered template
-            # changes. Nomad will always write the new contents of the template
-            # to the specified destination. The following possible values
-            # describe Nomad's action after writing the template to disk.
-            change_mode = "noop";
-            error_on_missing_key = true;
-          };
+          template = [
+            # Envars
+            {
+              # podman container input environment variables.
+              env = true;
+              # File name to create inside the allocation directory.
+              destination = "envars";
+              # See runtime for available variables:
+              # https://developer.hashicorp.com/nomad/docs/runtime/environment
+              data = ''
+                SUPERVISOR_NIX="{{ env "NOMAD_META_SUPERVISOR_NIX" }}"
+                SUPERVISORD_URL="{{ env "NOMAD_META_SUPERVISORD_URL" }}"
+                SUPERVISORD_CONFIG="{{ env "NOMAD_META_SUPERVISORD_CONFIG" }}"
+                SUPERVISORD_LOGLEVEL="{{ env "NOMAD_META_SUPERVISORD_LOGLEVEL" }}"
+                '';
+              # Specifies the behavior Nomad should take if the rendered
+              # template changes. Nomad will always write the new contents of
+              # the template to the specified destination. The following
+              # possible values describe Nomad's action after writing the
+              # template to disk.
+              change_mode = "noop";
+              error_on_missing_key = true;
+            }
+            # supervisord config.
+            {
+              env = false;
+              destination = "${container_supervisord_conf}";
+              data = supervisorConf.out.text;
+              change_mode = "noop";
+              error_on_missing_key = true;
+            }
+          ];
 
           # Specifies where a group volume should be mounted.
           volume_mount = null; #TODO

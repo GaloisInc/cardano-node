@@ -37,8 +37,6 @@ case "$op" in
         # The output files of the profiles Nix derivation:
         ## The one provided by the profile, the one used may suffer changes (jq).
         setenvjqstr 'nomad_job_file' "$profile_dir"/nomad-job.json
-        ## Look up `supervisord` config file produced by Nix (run profile).
-        setenvjqstr 'supervisord_conf' "$profile_dir"/supervisor.conf
         ## Look up `cluster` OCI image's name and tag (also Nix profile).
         setenvjqstr 'oci_image_name' ${WB_OCI_IMAGE_NAME:-$(cat "$profile_dir/clusterImageName")}
         setenvjqstr 'oci_image_tag'  ${WB_OCI_IMAGE_TAG:-$(cat  "$profile_dir/clusterImageTag")}
@@ -104,29 +102,6 @@ case "$op" in
           mkdir -p "$dir"/genesis/utxo-keys
           cp -r "$dir"/genesis/utxo-keys.bak/* "$dir"/genesis/utxo-keys/
         fi
-
-        # Populate the files needed by each `supervisord` server that will run
-        # for every podman container / nomad task (generator, tracer and nodes).
-        # All these folder are going to be mounted on run/current/supervisor to
-        # keep the supervisor.conf compatible with the supervisor backend.
-        # Previously tried sharing the same folder for every supervisor but
-        # difficult to debug race conditions happened (best guess is PID files).
-        mkdir -p     "$dir"/generator/supervisor
-        mkdir -p     "$dir"/tracer/supervisor
-        for node in $(jq_tolist 'keys' "$dir"/node-specs.json)
-        do
-            mkdir -p "$dir"/"$node"/supervisor
-        done
-        local supervisord_conf=$(envjqr 'supervisord_conf')
-        # These files have to be copied, not linked, because folder are going to
-        # be mounted inside the container and the linked file may not be
-        # accesible or may have a different path.
-        cp     "$supervisord_conf" "$dir"/generator/supervisor/supervisord.conf
-        cp     "$supervisord_conf" "$dir"/tracer/supervisor/supervisord.conf
-        for node in $(jq_tolist 'keys' "$dir"/node-specs.json)
-        do
-            cp "$supervisord_conf" "$dir"/"$node"/supervisor/supervisord.conf
-        done
 
         # Create the "cluster" OCI image.
         local oci_image_name=$(         envjqr 'oci_image_name')
@@ -860,8 +835,7 @@ nomad_create_job_file() {
       # the workbench's "supervisor" backend.
       local jq_filter="
         [
-            \"${dir}/${node}/supervisor:${container_mountpoint}/supervisor:rw\"
-          , \"${dir}/tracer:${container_mountpoint}/tracer:rw\"
+            \"${dir}/tracer:${container_mountpoint}/tracer:rw\"
           , \"${dir}/${node}:${container_mountpoint}/${node}:rw,exec\"
         ]
         +
@@ -889,8 +863,7 @@ nomad_create_job_file() {
     # the workbench's "supervisor" backend.
     local jq_filter_t="
       [
-          \"${dir}/tracer/supervisor:${container_mountpoint}/supervisor:rw\"
-        , \"${dir}/tracer:${container_mountpoint}/tracer:rw\"
+          \"${dir}/tracer:${container_mountpoint}/tracer:rw\"
       ]
       +
       [
@@ -910,8 +883,7 @@ nomad_create_job_file() {
     # the workbench's "supervisor" backend.
     local jq_filter_g="
       [
-          \"${dir}/generator/supervisor:${container_mountpoint}/supervisor:rw\"
-        , \"${dir}/tracer:${container_mountpoint}/tracer:rw\"
+          \"${dir}/tracer:${container_mountpoint}/tracer:rw\"
         , \"${dir}/generator:${container_mountpoint}/generator:rw\"
       ]
       +
