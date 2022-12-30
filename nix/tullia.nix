@@ -43,9 +43,10 @@ in rec {
         nix build -L ${flakeUrl}#${lib.escapeShellArg top}.cardano-deployment
       '';
 
-      # some hydra jobs run NixOS tests
       env.NIX_CONFIG = ''
-        extra-system-features = kvm
+        # `kvm` for NixOS tests
+        # `benchmark` for benchmarks
+        extra-system-features = kvm benchmark
       '';
 
       memory = 1024 * 32;
