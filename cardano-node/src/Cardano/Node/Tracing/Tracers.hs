@@ -146,12 +146,12 @@ mkDispatchTracers nodeKernel trBase trForward mbTrEKG trDataPoint trConfig enabl
                     blk <-
       mkConsensusTracers trBase trForward mbTrEKG trDataPoint trConfig nodeKernel
 
---     nodeToClientTr :: NodeToClient.Tracers
---                     IO
---                     (ConnectionId LocalAddress)
---                     blk
---                     DeserialiseFailure <-
---       mkNodeToClientTracers trBase trForward mbTrEKG trDataPoint trConfig
+    nodeToClientTr :: NodeToClient.Tracers
+                    IO
+                    (ConnectionId LocalAddress)
+                    blk
+                    DeserialiseFailure <-
+      mkNodeToClientTracers trBase trForward mbTrEKG trDataPoint trConfig
 
 --     nodeToNodeTr :: NodeToNode.Tracers
 --                     IO
@@ -344,57 +344,49 @@ mkConsensusTracers trBase trForward mbTrEKG _trDataPoint trConfig nodeKernel = d
           traceWith consensusStartupErrorTr . ConsensusStartupException
       }
 
--- mkNodeToClientTracers :: forall blk.
---      Consensus.RunNode blk
---   => Trace IO FormattedMessage
---   -> Trace IO FormattedMessage
---   -> Maybe (Trace IO FormattedMessage)
---   -> Trace IO DataPoint
---   -> TraceConfig
---   -> IO (NodeToClient.Tracers IO (ConnectionId LocalAddress) blk DeserialiseFailure)
--- mkNodeToClientTracers trBase trForward mbTrEKG _trDataPoint trConfig = do
---     chainSyncTr <-
---       mkCardanoTracer
---         trBase trForward mbTrEKG
---         ["ChainSync", "Local"]
---         namesForTChainSync
---         severityTChainSync
---         allPublic
---     configureTracers trConfig docTChainSyncNodeToClient [chainSyncTr]
---     txMonitorTr <-
---       mkCardanoTracer
---         trBase trForward mbTrEKG
---         ["TxSubmission", "MonitorClient"]
---         namesForTTxMonitor
---         severityTTxMonitor
---         allPublic
---     configureTracers trConfig docTTxMonitor [txMonitorTr]
---     txSubmissionTr <-
---       mkCardanoTracer
---         trBase trForward mbTrEKG
---         ["TxSubmission", "Local"]
---         namesForTTxSubmission
---         severityTTxSubmission
---         allPublic
---     configureTracers trConfig docTTxSubmission [txSubmissionTr]
---     stateQueryTr <-
---       mkCardanoTracer
---         trBase trForward mbTrEKG
---         ["StateQueryServer"]
---         namesForTStateQuery
---         severityTStateQuery
---         allPublic
---     configureTracers trConfig docTStateQuery [stateQueryTr]
---     pure $ NtC.Tracers
---       { NtC.tChainSyncTracer = Tracer $
---           traceWith chainSyncTr
---       , NtC.tTxMonitorTracer = Tracer $
---           traceWith txMonitorTr
---       , NtC.tTxSubmissionTracer = Tracer $
---           traceWith txSubmissionTr
---       , NtC.tStateQueryTracer = Tracer $
---           traceWith stateQueryTr
---       }
+mkNodeToClientTracers :: forall blk.
+     Consensus.RunNode blk
+  => Trace IO FormattedMessage
+  -> Trace IO FormattedMessage
+  -> Maybe (Trace IO FormattedMessage)
+  -> Trace IO DataPoint
+  -> TraceConfig
+  -> IO (NodeToClient.Tracers IO (ConnectionId LocalAddress) blk DeserialiseFailure)
+mkNodeToClientTracers trBase trForward mbTrEKG _trDataPoint trConfig = do
+    chainSyncTr <-
+      mkCardanoTracer
+        trBase trForward mbTrEKG
+        ["ChainSync", "Local"]
+    configureTracers trConfig [chainSyncTr]
+
+    txMonitorTr <-
+      mkCardanoTracer
+        trBase trForward mbTrEKG
+        ["TxSubmission", "MonitorClient"]
+    configureTracers trConfig [txMonitorTr]
+
+    txSubmissionTr <-
+      mkCardanoTracer
+        trBase trForward mbTrEKG
+        ["TxSubmission", "Local"]
+    configureTracers trConfig [txSubmissionTr]
+
+    stateQueryTr <-
+      mkCardanoTracer
+        trBase trForward mbTrEKG
+        ["StateQueryServer"]
+    configureTracers trConfig [stateQueryTr]
+
+    pure $ NtC.Tracers
+      { NtC.tChainSyncTracer = Tracer $
+          traceWith chainSyncTr
+      , NtC.tTxMonitorTracer = Tracer $
+          traceWith txMonitorTr
+      , NtC.tTxSubmissionTracer = Tracer $
+          traceWith txSubmissionTr
+      , NtC.tStateQueryTracer = Tracer $
+          traceWith stateQueryTr
+      }
 
 -- mkNodeToNodeTracers :: forall blk.
 --   ( Consensus.RunNode blk
