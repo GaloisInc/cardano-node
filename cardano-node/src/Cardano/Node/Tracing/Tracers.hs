@@ -153,20 +153,20 @@ mkDispatchTracers nodeKernel trBase trForward mbTrEKG trDataPoint trConfig enabl
                     DeserialiseFailure <-
       mkNodeToClientTracers trBase trForward mbTrEKG trDataPoint trConfig
 
---     nodeToNodeTr :: NodeToNode.Tracers
---                     IO
---                     (ConnectionId RemoteAddress)
---                     blk
---                     DeserialiseFailure <-
---       mkNodeToNodeTracers trBase trForward mbTrEKG trDataPoint trConfig
+    nodeToNodeTr :: NodeToNode.Tracers
+                    IO
+                    (ConnectionId RemoteAddress)
+                    blk
+                    DeserialiseFailure <-
+      mkNodeToNodeTracers trBase trForward mbTrEKG trDataPoint trConfig
 
---     diffusionTr :: Diffusion.Tracers
---                     RemoteAddress
---                     NodeToNodeVersion
---                     LocalAddress
---                     NodeToClientVersion
---                     IO <-
---       mkDiffusionTracers trBase trForward mbTrEKG trDataPoint trConfig
+    diffusionTr :: Diffusion.Tracers
+                    RemoteAddress
+                    NodeToNodeVersion
+                    LocalAddress
+                    NodeToClientVersion
+                    IO <-
+      mkDiffusionTracers trBase trForward mbTrEKG trDataPoint trConfig
 
 --     diffusionTrExtra :: Diffusion.ExtraTracers p2p <-
 --       mkDiffusionTracersExtra trBase trForward mbTrEKG trDataPoint trConfig enableP2P
@@ -388,80 +388,70 @@ mkNodeToClientTracers trBase trForward mbTrEKG _trDataPoint trConfig = do
           traceWith stateQueryTr
       }
 
--- mkNodeToNodeTracers :: forall blk.
---   ( Consensus.RunNode blk
---   , TraceConstraints blk)
---   => Trace IO FormattedMessage
---   -> Trace IO FormattedMessage
---   -> Maybe (Trace IO FormattedMessage)
---   -> Trace IO DataPoint
---   -> TraceConfig
---   -> IO (NodeToNode.Tracers IO (ConnectionId RemoteAddress) blk DeserialiseFailure)
--- mkNodeToNodeTracers trBase trForward mbTrEKG _trDataPoint trConfig = do
---     chainSyncTracer <-  mkCardanoTracer
---                 trBase trForward mbTrEKG
---                 ["ChainSync", "Remote"]
---                 namesForTChainSyncNode
---                 severityTChainSyncNode
---                 allPublic
---     configureTracers trConfig docTChainSyncNodeToNode [chainSyncTracer]
---     chainSyncSerialisedTr <-  mkCardanoTracer
---                 trBase trForward mbTrEKG
---                 ["ChainSync", "Remote", "Serialised"]
---                 namesForTChainSyncSerialised
---                 severityTChainSyncSerialised
---                 allPublic
---     configureTracers trConfig docTChainSyncNodeToNodeSerisalised [chainSyncSerialisedTr]
---     blockFetchTr  <-  mkCardanoTracer
---                 trBase trForward mbTrEKG
---                 ["BlockFetch", "Remote"]
---                 namesForTBlockFetch
---                 severityTBlockFetch
---                 allPublic
---     configureTracers trConfig docTBlockFetch [blockFetchTr]
---     blockFetchSerialisedTr <-  mkCardanoTracer
---                 trBase trForward mbTrEKG
---                 ["BlockFetch", "Remote", "Serialised"]
---                 namesForTBlockFetchSerialised
---                 severityTBlockFetchSerialised
---                 allPublic
---     configureTracers trConfig docTBlockFetch [blockFetchSerialisedTr]
---     txSubmission2Tracer  <-  mkCardanoTracer
---                 trBase trForward mbTrEKG
---                 ["TxSubmission", "Remote"]
---                 namesForTxSubmission2Node
---                 severityTxSubmission2Node
---                 allPublic
---     configureTracers trConfig docTTxSubmission2Node [txSubmission2Tracer]
---     pure $ NtN.Tracers
---       { NtN.tChainSyncTracer = Tracer $
---           traceWith chainSyncTracer
---       , NtN.tChainSyncSerialisedTracer = Tracer $
---           traceWith chainSyncSerialisedTr
---       , NtN.tBlockFetchTracer = Tracer $
---           traceWith blockFetchTr
---       , NtN.tBlockFetchSerialisedTracer = Tracer $
---           traceWith blockFetchSerialisedTr
---       , NtN.tTxSubmission2Tracer = Tracer $
---           traceWith txSubmission2Tracer
---       }
+mkNodeToNodeTracers :: forall blk.
+  ( Consensus.RunNode blk
+  , TraceConstraints blk)
+  => Trace IO FormattedMessage
+  -> Trace IO FormattedMessage
+  -> Maybe (Trace IO FormattedMessage)
+  -> Trace IO DataPoint
+  -> TraceConfig
+  -> IO (NodeToNode.Tracers IO (ConnectionId RemoteAddress) blk DeserialiseFailure)
+mkNodeToNodeTracers trBase trForward mbTrEKG _trDataPoint trConfig = do
 
--- mkDiffusionTracers
---   :: Trace IO FormattedMessage
---   -> Trace IO FormattedMessage
---   -> Maybe (Trace IO FormattedMessage)
---   -> Trace IO DataPoint
---   -> TraceConfig
---   -> IO (Diffusion.Tracers RemoteAddress NodeToNodeVersion
---         LocalAddress NodeToClientVersion IO)
--- mkDiffusionTracers  trBase trForward mbTrEKG _trDataPoint trConfig = do
---     dtMuxTr   <-  mkCardanoTracer
---                 trBase trForward mbTrEKG
---                 ["Net", "Mux", "Remote"]
---                 namesForMux
---                 severityMux
---                 allPublic
---     configureTracers trConfig docMuxRemote [dtMuxTr]
+    chainSyncTracer <-  mkCardanoTracer
+                trBase trForward mbTrEKG
+                ["ChainSync", "Remote"]
+    configureTracers trConfig [chainSyncTracer]
+
+    chainSyncSerialisedTr <-  mkCardanoTracer
+                trBase trForward mbTrEKG
+                ["ChainSync", "Remote", "Serialised"]
+    configureTracers trConfig [chainSyncSerialisedTr]
+
+    blockFetchTr  <-  mkCardanoTracer
+                trBase trForward mbTrEKG
+                ["BlockFetch", "Remote"]
+    configureTracers trConfig [blockFetchTr]
+
+    blockFetchSerialisedTr <-  mkCardanoTracer
+                trBase trForward mbTrEKG
+                ["BlockFetch", "Remote", "Serialised"]
+    configureTracers trConfig [blockFetchSerialisedTr]
+
+    txSubmission2Tracer  <-  mkCardanoTracer
+                trBase trForward mbTrEKG
+                ["TxSubmission", "Remote"]
+    configureTracers trConfig [txSubmission2Tracer]
+
+    pure $ NtN.Tracers
+      { NtN.tChainSyncTracer = Tracer $
+          traceWith chainSyncTracer
+      , NtN.tChainSyncSerialisedTracer = Tracer $
+          traceWith chainSyncSerialisedTr
+      , NtN.tBlockFetchTracer = Tracer $
+          traceWith blockFetchTr
+      , NtN.tBlockFetchSerialisedTracer = Tracer $
+          traceWith blockFetchSerialisedTr
+      , NtN.tTxSubmission2Tracer = Tracer $
+          traceWith txSubmission2Tracer
+      }
+
+mkDiffusionTracers
+  :: Trace IO FormattedMessage
+  -> Trace IO FormattedMessage
+  -> Maybe (Trace IO FormattedMessage)
+  -> Trace IO DataPoint
+  -> TraceConfig
+  -> IO (Diffusion.Tracers RemoteAddress NodeToNodeVersion
+        LocalAddress NodeToClientVersion IO)
+mkDiffusionTracers  trBase trForward mbTrEKG _trDataPoint trConfig = do
+
+    dtMuxTr   <-  mkCardanoTracer
+                trBase trForward mbTrEKG
+                ["Net", "Mux", "Remote"]
+    configureTracers trConfig [dtMuxTr]
+
 --     dtLocalMuxTr   <-  mkCardanoTracer
 --                 trBase trForward mbTrEKG
 --                 ["Net", "Mux", "Local"]
@@ -497,20 +487,20 @@ mkNodeToClientTracers trBase trForward mbTrEKG _trDataPoint trConfig = do
 --                 severityLedgerPeers
 --                 allPublic
 --     configureTracers trConfig docLedgerPeers [dtLedgerPeersTr]
---     pure $ Diffusion.Tracers
---        { Diffusion.dtMuxTracer                     = Tracer $
---            traceWith dtMuxTr
---        , Diffusion.dtHandshakeTracer               = Tracer $
---            traceWith dtHandshakeTr
---        , Diffusion.dtLocalMuxTracer                = Tracer $
---            traceWith dtLocalMuxTr
---        , Diffusion.dtLocalHandshakeTracer          = Tracer $
---            traceWith dtLocalHandshakeTr
---        , Diffusion.dtDiffusionTracer               = Tracer $
---            traceWith dtDiffusionInitializationTr
---        , Diffusion.dtLedgerPeersTracer             = Tracer $
---            traceWith dtLedgerPeersTr
---        }
+    pure $ Diffusion.Tracers
+       { Diffusion.dtMuxTracer                     = Tracer $
+           traceWith dtMuxTr
+      --  , Diffusion.dtHandshakeTracer               = Tracer $
+      --      traceWith dtHandshakeTr
+      --  , Diffusion.dtLocalMuxTracer                = Tracer $
+      --      traceWith dtLocalMuxTr
+      --  , Diffusion.dtLocalHandshakeTracer          = Tracer $
+      --      traceWith dtLocalHandshakeTr
+      --  , Diffusion.dtDiffusionTracer               = Tracer $
+      --      traceWith dtDiffusionInitializationTr
+      --  , Diffusion.dtLedgerPeersTracer             = Tracer $
+      --      traceWith dtLedgerPeersTr
+       }
 
 -- mkDiffusionTracersExtra  :: forall p2p.
 --      Trace IO FormattedMessage

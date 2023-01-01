@@ -6,56 +6,46 @@
 
 {-# OPTIONS_GHC -Wno-orphans  #-}
 
-module Cardano.Node.Tracing.Tracers.Diffusion () where
---   (
---     severityMux
---   , namesForMux
---   , docMuxLocal
---   , docMuxRemote
+module Cardano.Node.Tracing.Tracers.Diffusion
+  () where
 
---   , severityHandshake
---   , namesForHandshake
---   , docHandshake
+import           Cardano.Logging
+import           Cardano.Prelude hiding (Show, show)
+import qualified Codec.CBOR.Term as CBOR
+import           Data.Aeson (Value (String), (.=))
+import           Data.Text (pack)
+import           Network.Mux (MuxTrace (..), WithMuxBearer (..))
+import qualified Network.Socket as Socket
+import           Network.TypedProtocol.Codec (AnyMessageAndAgency (..))
+import           Text.Show
 
---   , severityLocalHandshake
---   , namesForLocalHandshake
---   , docLocalHandshake
+import           Cardano.Node.Configuration.TopologyP2P (UseLedger (..))
 
---   , severityDiffusionInit
---   , namesForDiffusionInit
---   , docDiffusionInit
-
---   , severityLedgerPeers
---   , namesForLedgerPeers
---   , docLedgerPeers
---   ) where
-
--- import           Cardano.Logging
--- import           Cardano.Prelude hiding (Show, show)
--- import qualified Codec.CBOR.Term as CBOR
--- import           Data.Aeson (Value (String), (.=))
--- import           Data.Text (pack)
--- import           Network.Mux (MuxTrace (..), WithMuxBearer (..))
--- import qualified Network.Socket as Socket
--- import           Network.TypedProtocol.Codec (AnyMessageAndAgency (..))
--- import           Text.Show
-
--- import           Cardano.Node.Configuration.TopologyP2P (UseLedger (..))
-
--- import qualified Ouroboros.Network.Diffusion as ND
--- import           Ouroboros.Network.Driver.Simple (TraceSendRecv (..))
--- import qualified Ouroboros.Network.NodeToClient as NtC
--- import qualified Ouroboros.Network.NodeToNode as NtN
--- import           Ouroboros.Network.PeerSelection.LedgerPeers (NumberOfPeers (..), PoolStake (..),
---                    TraceLedgerPeers (..))
--- import           Ouroboros.Network.Protocol.BlockFetch.Type (Message (..))
--- import qualified Ouroboros.Network.Protocol.Handshake.Type as HS
--- import           Ouroboros.Network.Snocket (LocalAddress (..))
+import qualified Ouroboros.Network.Diffusion as ND
+import           Ouroboros.Network.Driver.Simple (TraceSendRecv (..))
+import qualified Ouroboros.Network.NodeToClient as NtC
+import qualified Ouroboros.Network.NodeToNode as NtN
+import           Ouroboros.Network.PeerSelection.LedgerPeers (NumberOfPeers (..), PoolStake (..),
+                   TraceLedgerPeers (..))
+import           Ouroboros.Network.Protocol.BlockFetch.Type (Message (..))
+import qualified Ouroboros.Network.Protocol.Handshake.Type as HS
+import           Ouroboros.Network.Snocket (LocalAddress (..))
 
 
--- --------------------------------------------------------------------------------
--- -- Mux Tracer
--- --------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+-- Mux Tracer
+--------------------------------------------------------------------------------
+
+instance (LogFormatting peer, Show peer) =>
+    LogFormatting (WithMuxBearer peer MuxTrace) where
+  forMachine dtal (WithMuxBearer b ev) =
+    mconcat [ "kind" .= String "MuxTrace"
+             , "bearer" .= forMachine dtal b
+             , "event" .= showT ev ]
+  forHuman (WithMuxBearer b ev) = "With mux bearer " <> showT b
+                                      <> ". " <> showT ev
+
+
 
 -- severityMux :: WithMuxBearer peer MuxTrace -> SeverityS
 -- severityMux (WithMuxBearer _ mt) = severityMux' mt
@@ -124,15 +114,6 @@ module Cardano.Node.Tracing.Tracers.Diffusion () where
 -- namesForMux' MuxTraceTCPInfo {}               = ["TCPInfo"]
 
 
-
--- instance (LogFormatting peer, Show peer) =>
---     LogFormatting (WithMuxBearer peer MuxTrace) where
---   forMachine dtal (WithMuxBearer b ev) =
---     mconcat [ "kind" .= String "MuxTrace"
---              , "bearer" .= forMachine dtal b
---              , "event" .= showT ev ]
---   forHuman (WithMuxBearer b ev) = "With mux bearer " <> showT b
---                                       <> ". " <> showT ev
 
 
 -- docMuxLocal :: Documented (WithMuxBearer (NtN.ConnectionId LocalAddress) MuxTrace)
