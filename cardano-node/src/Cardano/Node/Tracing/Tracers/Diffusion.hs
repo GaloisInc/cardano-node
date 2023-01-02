@@ -38,210 +38,213 @@ import           Ouroboros.Network.Snocket (LocalAddress (..))
 
 instance (LogFormatting peer, Show peer) =>
     LogFormatting (WithMuxBearer peer MuxTrace) where
-  forMachine dtal (WithMuxBearer b ev) =
-    mconcat [ "kind" .= String "MuxTrace"
-             , "bearer" .= forMachine dtal b
-             , "event" .= showT ev ]
+    forMachine dtal (WithMuxBearer b ev) =
+      mconcat [ "kind" .= String "MuxTrace"
+              , "bearer" .= forMachine dtal b
+              , "event" .= showT ev ]
+    forHuman (WithMuxBearer b ev) = "With mux bearer " <> showT b
+                                      <> ". " <> showT ev
+
+instance MetaTrace tr => MetaTrace (WithMuxBearer peer tr) where
+    namespaceFor (WithMuxBearer _peer obj) = (nsCast . namespaceFor) obj
+    severityFor ns = severityFor (nsCast ns)
+    privacyFor ns = privacyFor (nsCast ns)
+    detailsFor ns = detailsFor (nsCast ns)
+    documentFor ns = documentFor (nsCast ns :: Namespace tr)
+    metricsDocFor ns = metricsDocFor (nsCast ns :: Namespace tr)
+    allNamespaces = map nsCast (allNamespaces :: [Namespace tr])
+
+instance MetaTrace MuxTrace where
+    namespaceFor MuxTraceRecvHeaderStart {}       =
+      Namespace [] ["RecvHeaderStart"]
+    namespaceFor MuxTraceRecvHeaderEnd {}         =
+      Namespace [] ["RecvHeaderEnd"]
+    namespaceFor MuxTraceRecvStart {}             =
+      Namespace [] ["RecvStart"]
+    namespaceFor MuxTraceRecvEnd {}               =
+      Namespace [] ["RecvEnd"]
+    namespaceFor MuxTraceSendStart {}             =
+      Namespace [] ["SendStart"]
+    namespaceFor MuxTraceSendEnd                  =
+      Namespace [] ["SendEnd"]
+    namespaceFor MuxTraceState {}                 =
+      Namespace [] ["State"]
+    namespaceFor MuxTraceCleanExit {}             =
+      Namespace [] ["CleanExit"]
+    namespaceFor MuxTraceExceptionExit {}         =
+      Namespace [] ["ExceptionExit"]
+    namespaceFor MuxTraceChannelRecvStart {}      =
+      Namespace [] ["ChannelRecvStart"]
+    namespaceFor MuxTraceChannelRecvEnd {}        =
+      Namespace [] ["ChannelRecvEnd"]
+    namespaceFor MuxTraceChannelSendStart {}      =
+      Namespace [] ["ChannelSendStart"]
+    namespaceFor MuxTraceChannelSendEnd {}        =
+      Namespace [] ["ChannelSendEnd"]
+    namespaceFor MuxTraceHandshakeStart           =
+      Namespace [] ["HandshakeStart"]
+    namespaceFor MuxTraceHandshakeClientEnd {}    =
+      Namespace [] ["HandshakeClientEnd"]
+    namespaceFor MuxTraceHandshakeServerEnd       =
+      Namespace [] ["HandshakeServerEnd"]
+    namespaceFor MuxTraceHandshakeClientError {}  =
+      Namespace [] ["HandshakeClientError"]
+    namespaceFor MuxTraceHandshakeServerError {}  =
+      Namespace [] ["HandshakeServerError"]
+    namespaceFor MuxTraceRecvDeltaQObservation {} =
+      Namespace [] ["RecvDeltaQObservation"]
+    namespaceFor MuxTraceRecvDeltaQSample {}      =
+      Namespace [] ["RecvDeltaQSample"]
+    namespaceFor MuxTraceSDUReadTimeoutException  =
+      Namespace [] ["SDUReadTimeoutException"]
+    namespaceFor MuxTraceSDUWriteTimeoutException =
+      Namespace [] ["SDUWriteTimeoutException"]
+    namespaceFor MuxTraceStartEagerly {}          =
+      Namespace [] ["StartEagerly"]
+    namespaceFor MuxTraceStartOnDemand {}         =
+      Namespace [] ["StartOnDemand"]
+    namespaceFor MuxTraceStartedOnDemand {}       =
+      Namespace [] ["StartedOnDemand"]
+    namespaceFor MuxTraceTerminating {}           =
+      Namespace [] ["Terminating"]
+    namespaceFor MuxTraceShutdown {}              =
+      Namespace [] ["Shutdown"]
+    namespaceFor MuxTraceTCPInfo {}               =
+      Namespace [] ["TCPInfo"]
+
+    severityFor (Namespace _ ["RecvHeaderStart"]) _       = Just Debug
+    severityFor (Namespace _ ["RecvHeaderEnd"]) _         = Just Debug
+    severityFor (Namespace _ ["RecvStart"]) _             = Just Debug
+    severityFor (Namespace _ ["RecvEnd"]) _               = Just Debug
+    severityFor (Namespace _ ["SendStart"]) _             = Just Debug
+    severityFor (Namespace _ ["SendEnd"]) _               = Just Debug
+    severityFor (Namespace _ ["State"]) _                 = Just Info
+    severityFor (Namespace _ ["CleanExit"]) _             = Just Notice
+    severityFor (Namespace _ ["ExceptionExit"]) _         = Just Notice
+    severityFor (Namespace _ ["ChannelRecvStart"]) _      = Just Debug
+    severityFor (Namespace _ ["ChannelRecvEnd"]) _        = Just Debug
+    severityFor (Namespace _ ["ChannelSendStart"]) _      = Just Debug
+    severityFor (Namespace _ ["ChannelSendEnd"]) _        = Just Debug
+    severityFor (Namespace _ ["HandshakeStart"]) _        = Just Debug
+    severityFor (Namespace _ ["HandshakeClientEnd"]) _    = Just Info
+    severityFor (Namespace _ ["HandshakeServerEnd"]) _    = Just Debug
+    severityFor (Namespace _ ["HandshakeClientError"]) _  = Just Error
+    severityFor (Namespace _ ["HandshakeServerError"]) _  = Just Error
+    severityFor (Namespace _ ["RecvDeltaQObservation"]) _ = Just Debug
+    severityFor (Namespace _ ["RecvDeltaQSample"]) _      = Just Debug
+    severityFor (Namespace _ ["SDUReadTimeoutException"]) _  = Just Notice
+    severityFor (Namespace _ ["SDUWriteTimeoutException"]) _ = Just Notice
+    severityFor (Namespace _ ["StartEagerly"]) _          = Just Debug
+    severityFor (Namespace _ ["StartOnDemand"]) _         = Just Debug
+    severityFor (Namespace _ ["StartedOnDemand"]) _       = Just Debug
+    severityFor (Namespace _ ["Terminating"]) _           = Just Debug
+    severityFor (Namespace _ ["Shutdown"]) _              = Just Debug
+    severityFor (Namespace _ ["TCPInfo"]) _               = Just Debug
+    severityFor _ _ = Nothing
+
+    documentFor (Namespace _ ["RecvHeaderStart"])       = Just
+      "Bearer receive header start."
+    documentFor (Namespace _ ["RecvHeaderEnd"])         = Just
+      "Bearer receive header end."
+    documentFor (Namespace _ ["RecvStart"])             = Just
+      "Bearer receive start."
+    documentFor (Namespace _ ["RecvEnd"])               = Just
+      "Bearer receive end."
+    documentFor (Namespace _ ["SendStart"])             = Just
+      "Bearer send start."
+    documentFor (Namespace _ ["SendEnd"])               = Just
+      "Bearer send end."
+    documentFor (Namespace _ ["State"])                 = Just
+      "State."
+    documentFor (Namespace _ ["CleanExit"])             = Just
+      "Miniprotocol terminated cleanly."
+    documentFor (Namespace _ ["ExceptionExit"])         = Just
+      "Miniprotocol terminated with exception."
+    documentFor (Namespace _ ["ChannelRecvStart"])      = Just
+      "Channel receive start."
+    documentFor (Namespace _ ["ChannelRecvEnd"])        = Just
+      "Channel receive end."
+    documentFor (Namespace _ ["ChannelSendStart"])      = Just
+      "Channel send start."
+    documentFor (Namespace _ ["ChannelSendEnd"])        = Just
+      "Channel send end."
+    documentFor (Namespace _ ["HandshakeStart"])        = Just
+      "Handshake start."
+    documentFor (Namespace _ ["HandshakeClientEnd"])    = Just
+      "Handshake client end."
+    documentFor (Namespace _ ["HandshakeServerEnd"])    = Just
+      "Handshake server end."
+    documentFor (Namespace _ ["HandshakeClientError"])  = Just
+      "Handshake client error."
+    documentFor (Namespace _ ["HandshakeServerError"])  = Just
+      "Handshake server error."
+    documentFor (Namespace _ ["RecvDeltaQObservation"]) = Just
+      "Bearer DeltaQ observation."
+    documentFor (Namespace _ ["RecvDeltaQSample"])      = Just
+      "Bearer DeltaQ sample."
+    documentFor (Namespace _ ["SDUReadTimeoutException"])  = Just
+      "Timed out reading SDU."
+    documentFor (Namespace _ ["SDUWriteTimeoutException"]) = Just
+      "Timed out writing SDU."
+    documentFor (Namespace _ ["StartEagerly"])          = Just
+      "Eagerly started."
+    documentFor (Namespace _ ["StartOnDemand"])         = Just
+      "Preparing to start."
+    documentFor (Namespace _ ["StartedOnDemand"])       = Just
+      "Started on demand."
+    documentFor (Namespace _ ["Terminating"])           = Just
+      "Terminating."
+    documentFor (Namespace _ ["Shutdown"])              = Just
+      "Mux shutdown."
+    documentFor (Namespace _ ["TCPInfo"])               = Just
+      "TCPInfo."
+    documentFor _ = Nothing
+
+    allNamespaces = [
+        Namespace [] ["RecvHeaderStart"]
+      , Namespace [] ["RecvHeaderEnd"]
+      , Namespace [] ["RecvStart"]
+      , Namespace [] ["RecvEnd"]
+      , Namespace [] ["SendStart"]
+      , Namespace [] ["SendEnd"]
+      , Namespace [] ["State"]
+      , Namespace [] ["CleanExit"]
+      , Namespace [] ["ExceptionExit"]
+      , Namespace [] ["ChannelRecvStart"]
+      , Namespace [] ["ChannelRecvEnd"]
+      , Namespace [] ["ChannelSendStart"]
+      , Namespace [] ["ChannelSendEnd"]
+      , Namespace [] ["HandshakeStart"]
+      , Namespace [] ["HandshakeClientEnd"]
+      , Namespace [] ["HandshakeServerEnd"]
+      , Namespace [] ["HandshakeClientError"]
+      , Namespace [] ["HandshakeServerError"]
+      , Namespace [] ["RecvDeltaQObservation"]
+      , Namespace [] ["RecvDeltaQSample"]
+      , Namespace [] ["SDUReadTimeoutException"]
+      , Namespace [] ["SDUWriteTimeoutException"]
+      , Namespace [] ["StartEagerly"]
+      , Namespace [] ["StartOnDemand"]
+      , Namespace [] ["StartedOnDemand"]
+      , Namespace [] ["Terminating"]
+      , Namespace [] ["Shutdown"]
+      , Namespace [] ["TCPInfo"]
+      ]
+
+--------------------------------------------------------------------------------
+-- Handshake Tracer
+--------------------------------------------------------------------------------
+
+instance (Show adr, Show ver) => LogFormatting (NtN.HandshakeTr adr ver) where
+  forMachine _dtal (WithMuxBearer b ev) =
+    mconcat [ "kind" .= String "HandshakeTrace"
+             , "bearer" .= show b
+             , "event" .= show ev ]
   forHuman (WithMuxBearer b ev) = "With mux bearer " <> showT b
                                       <> ". " <> showT ev
 
+instance MetaTrace (AnyMessageAndAgency (HS.Handshake vNumber term)) where
 
-
--- severityMux :: WithMuxBearer peer MuxTrace -> SeverityS
--- severityMux (WithMuxBearer _ mt) = severityMux' mt
-
--- severityMux' :: MuxTrace -> SeverityS
--- severityMux' MuxTraceRecvHeaderStart {}       = Debug
--- severityMux' MuxTraceRecvHeaderEnd {}         = Debug
--- severityMux' MuxTraceRecvStart {}             = Debug
--- severityMux' MuxTraceRecvEnd {}               = Debug
--- severityMux' MuxTraceSendStart {}             = Debug
--- severityMux' MuxTraceSendEnd                  = Debug
--- severityMux' MuxTraceState {}                 = Info
--- severityMux' MuxTraceCleanExit {}             = Notice
--- severityMux' MuxTraceExceptionExit {}         = Notice
--- severityMux' MuxTraceChannelRecvStart {}      = Debug
--- severityMux' MuxTraceChannelRecvEnd {}        = Debug
--- severityMux' MuxTraceChannelSendStart {}      = Debug
--- severityMux' MuxTraceChannelSendEnd {}        = Debug
--- severityMux' MuxTraceHandshakeStart           = Debug
--- severityMux' MuxTraceHandshakeClientEnd {}    = Info
--- severityMux' MuxTraceHandshakeServerEnd       = Debug
--- severityMux' MuxTraceHandshakeClientError {}  = Error
--- severityMux' MuxTraceHandshakeServerError {}  = Error
--- severityMux' MuxTraceRecvDeltaQObservation {} = Debug
--- severityMux' MuxTraceRecvDeltaQSample {}      = Debug
--- severityMux' MuxTraceSDUReadTimeoutException  = Notice
--- severityMux' MuxTraceSDUWriteTimeoutException = Notice
--- severityMux' MuxTraceStartEagerly {}          = Debug
--- severityMux' MuxTraceStartOnDemand {}         = Debug
--- severityMux' MuxTraceStartedOnDemand {}       = Debug
--- severityMux' MuxTraceTerminating {}           = Debug
--- severityMux' MuxTraceShutdown {}              = Debug
--- severityMux' MuxTraceTCPInfo {}               = Debug
-
--- namesForMux :: WithMuxBearer peer MuxTrace -> [Text]
--- namesForMux (WithMuxBearer _ mt) = namesForMux' mt
-
--- namesForMux' :: MuxTrace -> [Text]
--- namesForMux' MuxTraceRecvHeaderStart {}       = ["RecvHeaderStart"]
--- namesForMux' MuxTraceRecvHeaderEnd {}         = ["RecvHeaderEnd"]
--- namesForMux' MuxTraceRecvStart {}             = ["RecvStart"]
--- namesForMux' MuxTraceRecvEnd {}               = ["RecvEnd"]
--- namesForMux' MuxTraceSendStart {}             = ["SendStart"]
--- namesForMux' MuxTraceSendEnd                  = ["SendEnd"]
--- namesForMux' MuxTraceState {}                 = ["State"]
--- namesForMux' MuxTraceCleanExit {}             = ["CleanExit"]
--- namesForMux' MuxTraceExceptionExit {}         = ["ExceptionExit"]
--- namesForMux' MuxTraceChannelRecvStart {}      = ["ChannelRecvStart"]
--- namesForMux' MuxTraceChannelRecvEnd {}        = ["ChannelRecvEnd"]
--- namesForMux' MuxTraceChannelSendStart {}      = ["ChannelSendStart"]
--- namesForMux' MuxTraceChannelSendEnd {}        = ["ChannelSendEnd"]
--- namesForMux' MuxTraceHandshakeStart           = ["HandshakeStart "]
--- namesForMux' MuxTraceHandshakeClientEnd {}    = ["HandshakeClientEnd"]
--- namesForMux' MuxTraceHandshakeServerEnd       = ["HandshakeServerEnd"]
--- namesForMux' MuxTraceHandshakeClientError {}  = ["HandshakeClientError"]
--- namesForMux' MuxTraceHandshakeServerError {}  = ["HandshakeServerError"]
--- namesForMux' MuxTraceRecvDeltaQObservation {} = ["RecvDeltaQObservation"]
--- namesForMux' MuxTraceRecvDeltaQSample {}      = ["RecvDeltaQSample"]
--- namesForMux' MuxTraceSDUReadTimeoutException  = ["SDUReadTimeoutException"]
--- namesForMux' MuxTraceSDUWriteTimeoutException = ["SDUWriteTimeoutException"]
--- namesForMux' MuxTraceStartEagerly {}          = ["StartEagerly"]
--- namesForMux' MuxTraceStartOnDemand {}         = ["StartOnDemand"]
--- namesForMux' MuxTraceStartedOnDemand {}       = ["StartedOnDemand"]
--- namesForMux' MuxTraceTerminating {}           = ["Terminating"]
--- namesForMux' MuxTraceShutdown {}              = ["Shutdown"]
--- namesForMux' MuxTraceTCPInfo {}               = ["TCPInfo"]
-
-
-
-
--- docMuxLocal :: Documented (WithMuxBearer (NtN.ConnectionId LocalAddress) MuxTrace)
--- docMuxLocal = addDocumentedNamespace  [] docMux'
-
--- docMuxRemote :: Documented (WithMuxBearer (NtN.ConnectionId NtN.RemoteAddress) MuxTrace)
--- docMuxRemote = addDocumentedNamespace  [] docMux'
-
-
--- docMux' :: Documented (WithMuxBearer peer MuxTrace)
--- docMux' = Documented [
---       DocMsg
---         ["RecvHeaderStart"]
---         []
---         "Bearer receive header start."
---     , DocMsg
---         ["RecvHeaderEnd"]
---         []
---         "Bearer receive header end."
---     , DocMsg
---         ["RecvStart"]
---         []
---         "Bearer receive start."
---     , DocMsg
---         ["RecvEnd"]
---         []
---         "Bearer receive end."
---     , DocMsg
---         ["SendStart"]
---         []
---         "Bearer send start."
---     , DocMsg
---         ["SendEnd"]
---         []
---         "Bearer send end."
---     , DocMsg
---         ["State"]
---         []
---         "State."
---     , DocMsg
---         ["CleanExit"]
---         []
---         "Miniprotocol terminated cleanly."
---     , DocMsg
---         ["ExceptionExit"]
---         []
---         "Miniprotocol terminated with exception."
---     , DocMsg
---         ["ChannelRecvStart"]
---         []
---         "Channel receive start."
---     , DocMsg
---         ["ChannelRecvEnd"]
---         []
---         "Channel receive end."
---     , DocMsg
---         ["ChannelSendStart"]
---         []
---         "Channel send start."
---     , DocMsg
---         ["ChannelSendEnd"]
---         []
---         "Channel send end."
---     , DocMsg
---         ["HandshakeStart"]
---         []
---         "Handshake start."
---     , DocMsg
---         ["HandshakeClientEnd"]
---         []
---         "Handshake client end."
---     , DocMsg
---         ["HandshakeServerEnd"]
---         []
---         "Handshake server end."
---     , DocMsg
---         ["HandshakeClientError"]
---         []
---         "Handshake client error."
---     , DocMsg
---         ["HandshakeServerError"]
---         []
---         "Handshake server error."
---     , DocMsg
---         ["RecvDeltaQObservation"]
---         []
---         "Bearer DeltaQ observation."
---     , DocMsg
---         ["RecvDeltaQSample"]
---         []
---         "Bearer DeltaQ sample."
---     , DocMsg
---         ["SDUReadTimeoutException"]
---         []
---         "Timed out reading SDU."
---     , DocMsg
---         ["SDUWriteTimeoutException"]
---         []
---         "Timed out writing SDU."
---     , DocMsg
---         ["StartEagerly"]
---         []
---         "Eagerly started."
---     , DocMsg
---         ["StartOnDemand"]
---         []
---         "Preparing to start."
---     , DocMsg
---         ["StartedOnDemand"]
---         []
---         "Started on demand."
---     , DocMsg
---         ["Terminating"]
---         []
---         "Terminating."
---     , DocMsg
---         ["Shutdown"]
---         []
---         "Mux shutdown."
---     , DocMsg
---         ["TCPInfo"]
---         []
---         "TCPInfo."
---     ]
-
--- --------------------------------------------------------------------------------
--- -- Handshake Tracer
--- --------------------------------------------------------------------------------
 
 -- severityHandshake :: NtN.HandshakeTr adr ver -> SeverityS
 -- severityHandshake (WithMuxBearer _ e) = severityHandshake' e
@@ -274,18 +277,11 @@ instance (LogFormatting peer, Show peer) =>
 -- namesForHandshake'' (AnyMessageAndAgency _agency msg) = namesForHandshake''' msg
 
 -- namesForHandshake''' :: Message (HS.Handshake nt CBOR.Term) from to -> [Text]
--- namesForHandshake''' HS.MsgProposeVersions {} = ["ProposeVersions"]
--- namesForHandshake''' HS.MsgReplyVersions {}   = ["ReplyVersions"]
--- namesForHandshake''' HS.MsgAcceptVersion {}   = ["AcceptVersion"]
--- namesForHandshake''' HS.MsgRefuse {}          = ["Refuse"]
+-- namesForHandshake''' HS.MsgProposeVersions {} = Namespace [] "ProposeVersions"]
+-- namesForHandshake''' HS.MsgReplyVersions {}   = Namespace [] "ReplyVersions"]
+-- namesForHandshake''' HS.MsgAcceptVersion {}   = Namespace [] "AcceptVersion"]
+-- namesForHandshake''' HS.MsgRefuse {}          = Namespace [] "Refuse"]
 
--- instance LogFormatting (NtN.HandshakeTr NtN.RemoteAddress NtN.NodeToNodeVersion) where
---   forMachine _dtal (WithMuxBearer b ev) =
---     mconcat [ "kind" .= String "HandshakeTrace"
---              , "bearer" .= show b
---              , "event" .= show ev ]
---   forHuman (WithMuxBearer b ev) = "With mux bearer " <> showT b
---                                       <> ". " <> showT ev
 
 -- docHandshake :: Documented (NtN.HandshakeTr NtN.RemoteAddress ver)
 -- docHandshake = addDocumentedNamespace  ["Send"] docHandshake'
@@ -351,10 +347,10 @@ instance (LogFormatting peer, Show peer) =>
 -- namesForLocalHandshake'' (AnyMessageAndAgency _agency msg) = namesForLocalHandshake''' msg
 
 -- namesForLocalHandshake''' :: Message (HS.Handshake nt CBOR.Term) from to -> [Text]
--- namesForLocalHandshake''' HS.MsgProposeVersions {} = ["ProposeVersions"]
--- namesForLocalHandshake''' HS.MsgReplyVersions {}   = ["ReplyVersions"]
--- namesForLocalHandshake''' HS.MsgAcceptVersion {}   = ["AcceptVersion"]
--- namesForLocalHandshake''' HS.MsgRefuse {}          = ["Refuse"]
+-- namesForLocalHandshake''' HS.MsgProposeVersions {} = Namespace [] "ProposeVersions"]
+-- namesForLocalHandshake''' HS.MsgReplyVersions {}   = Namespace [] "ReplyVersions"]
+-- namesForLocalHandshake''' HS.MsgAcceptVersion {}   = Namespace [] "AcceptVersion"]
+-- namesForLocalHandshake''' HS.MsgRefuse {}          = Namespace [] "Refuse"]
 
 -- instance LogFormatting (NtC.HandshakeTr NtC.LocalAddress NtC.NodeToClientVersion) where
 --   forMachine _dtal (WithMuxBearer b ev) =
@@ -578,15 +574,15 @@ instance (LogFormatting peer, Show peer) =>
 -- severityLedgerPeers FallingBackToBootstrapPeers {} = Info
 
 -- namesForLedgerPeers :: TraceLedgerPeers -> [Text]
--- namesForLedgerPeers PickedPeer {}                  = ["PickedPeer"]
--- namesForLedgerPeers PickedPeers {}                 = ["PickedPeers"]
--- namesForLedgerPeers FetchingNewLedgerState {}      = ["FetchingNewLedgerState"]
--- namesForLedgerPeers DisabledLedgerPeers {}         = ["DisabledLedgerPeers"]
--- namesForLedgerPeers TraceUseLedgerAfter {}         = ["TraceUseLedgerAfter"]
--- namesForLedgerPeers WaitingOnRequest {}            = ["WaitingOnRequest"]
--- namesForLedgerPeers RequestForPeers {}             = ["RequestForPeers"]
--- namesForLedgerPeers ReusingLedgerState {}          = ["ReusingLedgerState"]
--- namesForLedgerPeers FallingBackToBootstrapPeers {} = ["FallingBackToBootstrapPeers"]
+-- namesForLedgerPeers PickedPeer {}                  = Namespace [] "PickedPeer"]
+-- namesForLedgerPeers PickedPeers {}                 = Namespace [] "PickedPeers"]
+-- namesForLedgerPeers FetchingNewLedgerState {}      = Namespace [] "FetchingNewLedgerState"]
+-- namesForLedgerPeers DisabledLedgerPeers {}         = Namespace [] "DisabledLedgerPeers"]
+-- namesForLedgerPeers TraceUseLedgerAfter {}         = Namespace [] "TraceUseLedgerAfter"]
+-- namesForLedgerPeers WaitingOnRequest {}            = Namespace [] "WaitingOnRequest"]
+-- namesForLedgerPeers RequestForPeers {}             = Namespace [] "RequestForPeers"]
+-- namesForLedgerPeers ReusingLedgerState {}          = Namespace [] "ReusingLedgerState"]
+-- namesForLedgerPeers FallingBackToBootstrapPeers {} = Namespace [] "FallingBackToBootstrapPeers"]
 
 
 -- instance LogFormatting TraceLedgerPeers where

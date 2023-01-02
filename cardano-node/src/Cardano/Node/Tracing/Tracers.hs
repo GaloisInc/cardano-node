@@ -452,20 +452,16 @@ mkDiffusionTracers  trBase trForward mbTrEKG _trDataPoint trConfig = do
                 ["Net", "Mux", "Remote"]
     configureTracers trConfig [dtMuxTr]
 
---     dtLocalMuxTr   <-  mkCardanoTracer
---                 trBase trForward mbTrEKG
---                 ["Net", "Mux", "Local"]
---                 namesForMux
---                 severityMux
---                 allPublic
---     configureTracers trConfig docMuxLocal [dtLocalMuxTr]
---     dtHandshakeTr   <-  mkCardanoTracer
---                 trBase trForward mbTrEKG
---                 ["Net", "Handshake", "Remote"]
---                 namesForHandshake
---                 severityHandshake
---                 allPublic
---     configureTracers trConfig docHandshake [dtHandshakeTr]
+    dtLocalMuxTr   <-  mkCardanoTracer
+                trBase trForward mbTrEKG
+                ["Net", "Mux", "Local"]
+    configureTracers trConfig [dtLocalMuxTr]
+
+    dtHandshakeTr   <-  mkCardanoTracer
+                trBase trForward mbTrEKG
+                ["Net", "Handshake", "Remote"]
+    configureTracers trConfig [dtHandshakeTr]
+
 --     dtLocalHandshakeTr  <-  mkCardanoTracer
 --                 trBase trForward mbTrEKG
 --                 ["Net", "Handshake", "Local"]
@@ -490,10 +486,10 @@ mkDiffusionTracers  trBase trForward mbTrEKG _trDataPoint trConfig = do
     pure $ Diffusion.Tracers
        { Diffusion.dtMuxTracer                     = Tracer $
            traceWith dtMuxTr
-      --  , Diffusion.dtHandshakeTracer               = Tracer $
-      --      traceWith dtHandshakeTr
-      --  , Diffusion.dtLocalMuxTracer                = Tracer $
-      --      traceWith dtLocalMuxTr
+       , Diffusion.dtLocalMuxTracer                = Tracer $
+           traceWith dtLocalMuxTr
+       , Diffusion.dtHandshakeTracer               = Tracer $
+           traceWith dtHandshakeTr
       --  , Diffusion.dtLocalHandshakeTracer          = Tracer $
       --      traceWith dtLocalHandshakeTr
       --  , Diffusion.dtDiffusionTracer               = Tracer $
