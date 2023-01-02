@@ -4,7 +4,7 @@ name:                   cardano-tracer
 version:                0.1.0
 synopsis:               A service for logging and monitoring over Cardano nodes.
 description:            See README for more info
-copyright:              2023 Input Output (Hong Kong) Ltd.
+copyright:              2022-2023 Input Output (Hong Kong) Ltd.
 author:                 IOHK
 maintainer:             operations@iohk.io
 license:                Apache-2.0
@@ -13,6 +13,7 @@ license-files:          LICENSE
 build-type:             Simple
 extra-doc-files:        README.md
                         CHANGELOG.md
+
 
 common project-config
   default-language:     Haskell2010

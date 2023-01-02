@@ -3,7 +3,7 @@ cabal-version: 3.0
 name:                   trace-resources
 version:                0.1.0.0
 synopsis:               Package for tracing resources for linux, mac and windows
-copyright:              2023 Input Output (Hong Kong) Ltd.
+copyright:              2021-2023 Input Output (Hong Kong) Ltd.
 author:                 Juergen Nicklisch-Franken
 maintainer:             operations@iohk.io
 license:                Apache-2.0

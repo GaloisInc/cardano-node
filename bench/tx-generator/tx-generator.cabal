@@ -3,7 +3,7 @@ cabal-version: 3.0
 name:                   tx-generator
 version:                2.4
 description:            The transaction generator for cardano node
-copyright:              2023 Input Output (Hong Kong) Ltd.
+copyright:              2021-2023 Input Output (Hong Kong) Ltd.
 author:                 IOHK
 maintainer:             operations@iohk.io
 license:                Apache-2.0
