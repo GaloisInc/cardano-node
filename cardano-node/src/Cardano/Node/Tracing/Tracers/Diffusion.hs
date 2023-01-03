@@ -236,443 +236,343 @@ instance MetaTrace MuxTrace where
 --------------------------------------------------------------------------------
 
 instance (Show adr, Show ver) => LogFormatting (NtN.HandshakeTr adr ver) where
-  forMachine _dtal (WithMuxBearer b ev) =
-    mconcat [ "kind" .= String "HandshakeTrace"
-             , "bearer" .= show b
-             , "event" .= show ev ]
-  forHuman (WithMuxBearer b ev) = "With mux bearer " <> showT b
-                                      <> ". " <> showT ev
+    forMachine _dtal (WithMuxBearer b ev) =
+      mconcat [ "kind" .= String "HandshakeTrace"
+              , "bearer" .= show b
+              , "event" .= show ev ]
+    forHuman (WithMuxBearer b ev) = "With mux bearer " <> showT b
+                                        <> ". " <> showT ev
 
-instance MetaTrace (AnyMessageAndAgency (HS.Handshake vNumber term)) where
+instance MetaTrace (AnyMessageAndAgency (HS.Handshake nt term)) where
+    namespaceFor (AnyMessageAndAgency _stok HS.MsgProposeVersions {}) =
+      Namespace [] ["ProposeVersions"]
+    namespaceFor (AnyMessageAndAgency _stok HS.MsgReplyVersions {})   =
+      Namespace [] ["ReplyVersions"]
+    namespaceFor (AnyMessageAndAgency _stok HS.MsgAcceptVersion {})   =
+      Namespace [] ["AcceptVersion"]
+    namespaceFor (AnyMessageAndAgency _stok HS.MsgRefuse {})          =
+      Namespace [] ["Refuse"]
 
+    severityFor (Namespace _ ["ProposeVersions"]) _ = Just Info
+    severityFor (Namespace _ ["ReplyVersions"]) _ = Just Info
+    severityFor (Namespace _ ["AcceptVersion"]) _ = Just Info
+    severityFor (Namespace _ ["Refuse"]) _ = Just Info
+    severityFor _ _ = Nothing
 
--- severityHandshake :: NtN.HandshakeTr adr ver -> SeverityS
--- severityHandshake (WithMuxBearer _ e) = severityHandshake' e
+    documentFor (Namespace _ ["ProposeVersions"]) = Just
+      "Propose versions together with version parameters.  It must be\
+        \ encoded to a sorted list.."
+    documentFor (Namespace _ ["ReplyVersions"]) = Just
+      "`MsgReplyVersions` received as a response to 'MsgProposeVersions'.  It\
+        \ is not supported to explicitly send this message. It can only be\
+        \ received as a copy of 'MsgProposeVersions' in a simultaneous open\
+        \ scenario."
+    documentFor (Namespace _ ["AcceptVersion"]) = Just
+        "The remote end decides which version to use and sends chosen version.\
+        \The server is allowed to modify version parameters."
+    documentFor (Namespace _ ["Refuse"]) = Just
+        "It refuses to run any version."
+    documentFor _ = Nothing
 
--- severityHandshake' ::
---      TraceSendRecv (HS.Handshake nt CBOR.Term)
---   -> SeverityS
--- severityHandshake' (TraceSendMsg m) = severityHandshake'' m
--- severityHandshake' (TraceRecvMsg m) = severityHandshake'' m
-
--- severityHandshake'' :: AnyMessageAndAgency (HS.Handshake nt CBOR.Term) -> SeverityS
--- severityHandshake'' (AnyMessageAndAgency _agency msg) = severityHandshake''' msg
-
--- severityHandshake''' :: Message (HS.Handshake nt CBOR.Term) from to -> SeverityS
--- severityHandshake''' HS.MsgProposeVersions {} = Info
--- severityHandshake''' HS.MsgReplyVersions {}   = Info
--- severityHandshake''' HS.MsgAcceptVersion {}   = Info
--- severityHandshake''' HS.MsgRefuse {}          = Info
-
--- namesForHandshake :: NtN.HandshakeTr adr ver -> [Text]
--- namesForHandshake (WithMuxBearer _ e) = namesForHandshake' e
-
--- namesForHandshake' ::
---      TraceSendRecv (HS.Handshake nt CBOR.Term)
---   -> [Text]
--- namesForHandshake' (TraceSendMsg m) = "Send" : namesForHandshake'' m
--- namesForHandshake' (TraceRecvMsg m) = "Receive" : namesForHandshake'' m
-
--- namesForHandshake'' :: AnyMessageAndAgency (HS.Handshake nt CBOR.Term) -> [Text]
--- namesForHandshake'' (AnyMessageAndAgency _agency msg) = namesForHandshake''' msg
-
--- namesForHandshake''' :: Message (HS.Handshake nt CBOR.Term) from to -> [Text]
--- namesForHandshake''' HS.MsgProposeVersions {} = Namespace [] "ProposeVersions"]
--- namesForHandshake''' HS.MsgReplyVersions {}   = Namespace [] "ReplyVersions"]
--- namesForHandshake''' HS.MsgAcceptVersion {}   = Namespace [] "AcceptVersion"]
--- namesForHandshake''' HS.MsgRefuse {}          = Namespace [] "Refuse"]
-
-
--- docHandshake :: Documented (NtN.HandshakeTr NtN.RemoteAddress ver)
--- docHandshake = addDocumentedNamespace  ["Send"] docHandshake'
---                `addDocs` addDocumentedNamespace  ["Receive"] docHandshake'
-
--- docHandshake' :: Documented (NtN.HandshakeTr adr ver)
--- docHandshake' = Documented [
---       DocMsg
---         ["ProposeVersions"]
---         []
---         "Propose versions together with version parameters.  It must be\
---         \ encoded to a sorted list.."
---     , DocMsg
---         ["ReplyVersions"]
---         []
---         "`MsgReplyVersions` received as a response to 'MsgProposeVersions'.  It\
---         \ is not supported to explicitly send this message. It can only be\
---         \ received as a copy of 'MsgProposeVersions' in a simultaneous open\
---         \ scenario."
---     , DocMsg
---         ["AcceptVersion"]
---         []
---         "The remote end decides which version to use and sends chosen version.\
---         \The server is allowed to modify version parameters."
---     , DocMsg
---         ["Refuse"]
---         []
---         "It refuses to run any version."
---     ]
-
--- --------------------------------------------------------------------------------
--- -- LocalHandshake Tracer
--- --------------------------------------------------------------------------------
-
--- severityLocalHandshake :: NtC.HandshakeTr adr ver -> SeverityS
--- severityLocalHandshake (WithMuxBearer _ e) = severityLocalHandshake' e
-
--- severityLocalHandshake' ::
---      TraceSendRecv (HS.Handshake nt CBOR.Term)
---   -> SeverityS
--- severityLocalHandshake' (TraceSendMsg m) = severityLocalHandshake'' m
--- severityLocalHandshake' (TraceRecvMsg m) = severityLocalHandshake'' m
-
--- severityLocalHandshake'' :: AnyMessageAndAgency (HS.Handshake nt CBOR.Term) -> SeverityS
--- severityLocalHandshake'' (AnyMessageAndAgency _agency msg) = severityLocalHandshake''' msg
-
--- severityLocalHandshake''' :: Message (HS.Handshake nt CBOR.Term) from to -> SeverityS
--- severityLocalHandshake''' HS.MsgProposeVersions {} = Info
--- severityLocalHandshake''' HS.MsgReplyVersions {}   = Info
--- severityLocalHandshake''' HS.MsgAcceptVersion {}   = Info
--- severityLocalHandshake''' HS.MsgRefuse {}          = Info
-
--- namesForLocalHandshake :: NtC.HandshakeTr adr ver -> [Text]
--- namesForLocalHandshake (WithMuxBearer _ e) = namesForLocalHandshake' e
-
--- namesForLocalHandshake' ::
---      TraceSendRecv (HS.Handshake nt CBOR.Term)
---   -> [Text]
--- namesForLocalHandshake' (TraceSendMsg m) = "Send" : namesForLocalHandshake'' m
--- namesForLocalHandshake' (TraceRecvMsg m) = "Receive" : namesForLocalHandshake'' m
-
--- namesForLocalHandshake'' :: AnyMessageAndAgency (HS.Handshake nt CBOR.Term) -> [Text]
--- namesForLocalHandshake'' (AnyMessageAndAgency _agency msg) = namesForLocalHandshake''' msg
-
--- namesForLocalHandshake''' :: Message (HS.Handshake nt CBOR.Term) from to -> [Text]
--- namesForLocalHandshake''' HS.MsgProposeVersions {} = Namespace [] "ProposeVersions"]
--- namesForLocalHandshake''' HS.MsgReplyVersions {}   = Namespace [] "ReplyVersions"]
--- namesForLocalHandshake''' HS.MsgAcceptVersion {}   = Namespace [] "AcceptVersion"]
--- namesForLocalHandshake''' HS.MsgRefuse {}          = Namespace [] "Refuse"]
-
--- instance LogFormatting (NtC.HandshakeTr NtC.LocalAddress NtC.NodeToClientVersion) where
---   forMachine _dtal (WithMuxBearer b ev) =
---     mconcat [ "kind" .= String "LocalHandshakeTrace"
---              , "bearer" .= show b
---              , "event" .= show ev ]
---   forHuman (WithMuxBearer b ev) = "With mux bearer " <> showT b
---                                       <> ". " <> showT ev
-
--- docLocalHandshake :: Documented (NtC.HandshakeTr LocalAddress ver)
--- docLocalHandshake = addDocumentedNamespace  ["Send"] docHandshake'
---                `addDocs` addDocumentedNamespace  ["Receive"] docHandshake'
-
--- --------------------------------------------------------------------------------
--- -- DiffusionInit Tracer
--- --------------------------------------------------------------------------------
-
--- severityDiffusionInit :: ND.DiffusionTracer rard ladr -> SeverityS
--- severityDiffusionInit ND.RunServer {}                         = Info
--- severityDiffusionInit ND.RunLocalServer {}                    = Info
--- severityDiffusionInit ND.UsingSystemdSocket {}                = Info
--- severityDiffusionInit ND.CreateSystemdSocketForSnocketPath {} = Info
--- severityDiffusionInit ND.CreatedLocalSocket {}                = Info
--- severityDiffusionInit ND.ConfiguringLocalSocket {}            = Info
--- severityDiffusionInit ND.ListeningLocalSocket {}              = Info
--- severityDiffusionInit ND.LocalSocketUp  {}                    = Info
--- severityDiffusionInit ND.CreatingServerSocket {}              = Info
--- severityDiffusionInit ND.ConfiguringServerSocket {}           = Info
--- severityDiffusionInit ND.ListeningServerSocket {}             = Info
--- severityDiffusionInit ND.ServerSocketUp {}                    = Info
--- severityDiffusionInit ND.UnsupportedLocalSystemdSocket {}     = Warning
--- severityDiffusionInit ND.UnsupportedReadySocketCase {}        = Info
--- severityDiffusionInit ND.DiffusionErrored {}                  = Critical
--- severityDiffusionInit ND.SystemdSocketConfiguration {}        = Warning
-
--- namesForDiffusionInit  :: ND.DiffusionTracer rard ladr -> [Text]
--- namesForDiffusionInit  ND.RunServer {}                         =
---   ["RunServer"]
--- namesForDiffusionInit  ND.RunLocalServer {}                    =
---   ["RunLocalServer"]
--- namesForDiffusionInit  ND.UsingSystemdSocket {}                =
---   ["UsingSystemdSocket"]
--- namesForDiffusionInit  ND.CreateSystemdSocketForSnocketPath {} =
---   ["CreateSystemdSocketForSnocketPath"]
--- namesForDiffusionInit  ND.CreatedLocalSocket {}                =
---   ["CreatedLocalSocket"]
--- namesForDiffusionInit  ND.ConfiguringLocalSocket {}            =
---   ["ConfiguringLocalSocket"]
--- namesForDiffusionInit  ND.ListeningLocalSocket {}              =
---   ["ListeningLocalSocket"]
--- namesForDiffusionInit  ND.LocalSocketUp  {}                    =
---   ["LocalSocketUp"]
--- namesForDiffusionInit  ND.CreatingServerSocket {}              =
---   ["CreatingServerSocket"]
--- namesForDiffusionInit  ND.ConfiguringServerSocket {}           =
---   ["ConfiguringServerSocket"]
--- namesForDiffusionInit  ND.ListeningServerSocket {}             =
---   ["ListeningServerSocket"]
--- namesForDiffusionInit  ND.ServerSocketUp {}                    =
---   ["ServerSocketUp"]
--- namesForDiffusionInit  ND.UnsupportedLocalSystemdSocket {}     =
---   ["UnsupportedLocalSystemdSocket"]
--- namesForDiffusionInit  ND.UnsupportedReadySocketCase {}        =
---   ["UnsupportedReadySocketCase"]
--- namesForDiffusionInit  ND.DiffusionErrored {}                  =
---   ["DiffusionErrored"]
--- namesForDiffusionInit  ND.SystemdSocketConfiguration {}        =
---   ["SystemdSocketConfiguration"]
-
--- instance (Show ntnAddr, Show ntcAddr) =>
---   LogFormatting (ND.DiffusionTracer ntnAddr ntcAddr)  where
---   forMachine _dtal (ND.RunServer sockAddr) = mconcat
---     [ "kind" .= String "RunServer"
---     , "socketAddress" .= String (pack (show sockAddr))
---     ]
-
---   forMachine _dtal (ND.RunLocalServer localAddress) = mconcat
---     [ "kind" .= String "RunLocalServer"
---     , "localAddress" .= String (pack (show localAddress))
---     ]
---   forMachine _dtal (ND.UsingSystemdSocket localAddress) = mconcat
---     [ "kind" .= String "UsingSystemdSocket"
---     , "path" .= String (pack . show $ localAddress)
---     ]
-
---   forMachine _dtal (ND.CreateSystemdSocketForSnocketPath localAddress) = mconcat
---     [ "kind" .= String "CreateSystemdSocketForSnocketPath"
---     , "path" .= String (pack . show $ localAddress)
---     ]
---   forMachine _dtal (ND.CreatedLocalSocket localAddress) = mconcat
---     [ "kind" .= String "CreatedLocalSocket"
---     , "path" .= String (pack . show $ localAddress)
---     ]
---   forMachine _dtal (ND.ConfiguringLocalSocket localAddress socket) = mconcat
---     [ "kind" .= String "ConfiguringLocalSocket"
---     , "path" .= String (pack . show $ localAddress)
---     , "socket" .= String (pack (show socket))
---     ]
---   forMachine _dtal (ND.ListeningLocalSocket localAddress socket) = mconcat
---     [ "kind" .= String "ListeningLocalSocket"
---     , "path" .=  String (pack . show $ localAddress)
---     , "socket" .= String (pack (show socket))
---     ]
---   forMachine _dtal (ND.LocalSocketUp localAddress fd) = mconcat
---     [ "kind" .= String "LocalSocketUp"
---     , "path" .= String (pack . show $ localAddress)
---     , "socket" .= String (pack (show fd))
---     ]
---   forMachine _dtal (ND.CreatingServerSocket socket) = mconcat
---     [ "kind" .= String "CreatingServerSocket"
---     , "socket" .= String (pack (show socket))
---     ]
---   forMachine _dtal (ND.ListeningServerSocket socket) = mconcat
---     [ "kind" .= String "ListeningServerSocket"
---     , "socket" .= String (pack (show socket))
---     ]
---   forMachine _dtal (ND.ServerSocketUp socket) = mconcat
---     [ "kind" .= String "ServerSocketUp"
---     , "socket" .= String (pack (show socket))
---     ]
---   forMachine _dtal (ND.ConfiguringServerSocket socket) = mconcat
---     [ "kind" .= String "ConfiguringServerSocket"
---     , "socket" .= String (pack (show socket))
---     ]
---   forMachine _dtal (ND.UnsupportedLocalSystemdSocket path) = mconcat
---     [ "kind" .= String "UnsupportedLocalSystemdSocket"
---     , "path" .= String (pack (show path))
---     ]
---   forMachine _dtal ND.UnsupportedReadySocketCase = mconcat
---     [ "kind" .= String "UnsupportedReadySocketCase"
---     ]
---   forMachine _dtal (ND.DiffusionErrored exception) = mconcat
---     [ "kind" .= String "DiffusionErrored"
---     , "path" .= String (pack (show exception))
---     ]
---   forMachine _dtal (ND.SystemdSocketConfiguration config) = mconcat
---     [ "kind" .= String "SystemdSocketConfiguration"
---     , "path" .= String (pack (show config))
---     ]
-
--- docDiffusionInit :: Documented (ND.DiffusionTracer Socket.SockAddr NtC.LocalAddress)
--- docDiffusionInit =  addDocumentedNamespace  [] docDiffusionInit'
-
--- docDiffusionInit' :: Documented (ND.DiffusionTracer Socket.SockAddr NtC.LocalAddress)
--- docDiffusionInit' = Documented [
---     DocMsg
---       ["RunServer"]
---       []
---       "RunServer "
---   , DocMsg
---       ["RunLocalServer"]
---       []
---       "RunLocalServer "
---   , DocMsg
---      ["UsingSystemdSocket"]
---       []
---       "UsingSystemdSocket "
---   , DocMsg
---      ["CreateSystemdSocketForSnocketPath"]
---       []
---       "CreateSystemdSocketForSnocketPath "
---   , DocMsg
---       ["CreatedLocalSocket"]
---       []
---       "CreatedLocalSocket "
---   , DocMsg
---       ["ConfiguringLocalSocket"]
---       []
---       "ConfiguringLocalSocket "
---   , DocMsg
---       ["ListeningLocalSocket"]
---       []
---       "ListeningLocalSocket "
---   , DocMsg
---       ["LocalSocketUp"]
---       []
---       "LocalSocketUp "
---   , DocMsg
---       ["CreatingServerSocket"]
---       []
---       "CreatingServerSocket "
---   , DocMsg
---       ["ConfiguringServerSocket"]
---       []
---       "ConfiguringServerSocket "
---   , DocMsg
---       ["ListeningServerSocket"]
---       []
---       "ListeningServerSocket "
---   , DocMsg
---       ["ServerSocketUp"]
---       []
---       "ServerSocketUp "
---   , DocMsg
---       ["UnsupportedLocalSystemdSocket"]
---       []
---       "UnsupportedLocalSystemdSocket "
---   , DocMsg
---       ["UnsupportedReadySocketCase"]
---       []
---       "UnsupportedReadySocketCase "
---   , DocMsg
---       ["DiffusionErrored"]
---       []
---       "DiffusionErrored "
---   ]
-
--- --------------------------------------------------------------------------------
--- -- LedgerPeers Tracer
--- --------------------------------------------------------------------------------
-
--- severityLedgerPeers :: TraceLedgerPeers -> SeverityS
--- severityLedgerPeers PickedPeer {}                  = Debug
--- severityLedgerPeers PickedPeers {}                 = Info
--- severityLedgerPeers FetchingNewLedgerState {}      = Info
--- severityLedgerPeers DisabledLedgerPeers {}         = Info
--- severityLedgerPeers TraceUseLedgerAfter {}         = Info
--- severityLedgerPeers WaitingOnRequest {}            = Debug
--- severityLedgerPeers RequestForPeers {}             = Debug
--- severityLedgerPeers ReusingLedgerState {}          = Debug
--- severityLedgerPeers FallingBackToBootstrapPeers {} = Info
-
--- namesForLedgerPeers :: TraceLedgerPeers -> [Text]
--- namesForLedgerPeers PickedPeer {}                  = Namespace [] "PickedPeer"]
--- namesForLedgerPeers PickedPeers {}                 = Namespace [] "PickedPeers"]
--- namesForLedgerPeers FetchingNewLedgerState {}      = Namespace [] "FetchingNewLedgerState"]
--- namesForLedgerPeers DisabledLedgerPeers {}         = Namespace [] "DisabledLedgerPeers"]
--- namesForLedgerPeers TraceUseLedgerAfter {}         = Namespace [] "TraceUseLedgerAfter"]
--- namesForLedgerPeers WaitingOnRequest {}            = Namespace [] "WaitingOnRequest"]
--- namesForLedgerPeers RequestForPeers {}             = Namespace [] "RequestForPeers"]
--- namesForLedgerPeers ReusingLedgerState {}          = Namespace [] "ReusingLedgerState"]
--- namesForLedgerPeers FallingBackToBootstrapPeers {} = Namespace [] "FallingBackToBootstrapPeers"]
+    allNamespaces = [
+        Namespace [] ["ProposeVersions"]
+      , Namespace [] ["ReplyVersions"]
+      , Namespace [] ["AcceptVersion"]
+      , Namespace [] ["Refuse"]
+      ]
 
 
--- instance LogFormatting TraceLedgerPeers where
---   forMachine _dtal (PickedPeer addr _ackStake stake) =
---     mconcat
---       [ "kind" .= String "PickedPeer"
---       , "address" .= show addr
---       , "relativeStake" .= (realToFrac (unPoolStake stake) :: Double)
---       ]
---   forMachine _dtal (PickedPeers (NumberOfPeers n) addrs) =
---     mconcat
---       [ "kind" .= String "PickedPeers"
---       , "desiredCount" .= n
---       , "count" .= length addrs
---       , "addresses" .= show addrs
---       ]
---   forMachine _dtal (FetchingNewLedgerState cnt) =
---     mconcat
---       [ "kind" .= String "FetchingNewLedgerState"
---       , "numberOfPools" .= cnt
---       ]
---   forMachine _dtal DisabledLedgerPeers =
---     mconcat
---       [ "kind" .= String "DisabledLedgerPeers"
---       ]
---   forMachine _dtal (TraceUseLedgerAfter ula) =
---     mconcat
---       [ "kind" .= String "UseLedgerAfter"
---       , "useLedgerAfter" .= UseLedger ula
---       ]
---   forMachine _dtal WaitingOnRequest =
---     mconcat
---       [ "kind" .= String "WaitingOnRequest"
---       ]
---   forMachine _dtal (RequestForPeers (NumberOfPeers np)) =
---     mconcat
---       [ "kind" .= String "RequestForPeers"
---       , "numberOfPeers" .= np
---       ]
---   forMachine _dtal (ReusingLedgerState cnt age) =
---     mconcat
---       [ "kind" .= String "ReusingLedgerState"
---       , "numberOfPools" .= cnt
---       , "ledgerStateAge" .= age
---       ]
---   forMachine _dtal FallingBackToBootstrapPeers =
---     mconcat
---       [ "kind" .= String "FallingBackToBootstrapPeers"
---       ]
+--------------------------------------------------------------------------------
+-- DiffusionInit Tracer
+--------------------------------------------------------------------------------
 
--- docLedgerPeers :: Documented TraceLedgerPeers
--- docLedgerPeers =  addDocumentedNamespace  [] docLedgerPeers'
+instance (Show ntnAddr, Show ntcAddr) =>
+  LogFormatting (ND.DiffusionTracer ntnAddr ntcAddr) where
+  forMachine _dtal (ND.RunServer sockAddr) = mconcat
+    [ "kind" .= String "RunServer"
+    , "socketAddress" .= String (pack (show sockAddr))
+    ]
 
--- docLedgerPeers' :: Documented TraceLedgerPeers
--- docLedgerPeers' = Documented [
---     DocMsg
---       ["PickedPeer"]
---       []
---       "Trace for a peer picked with accumulated and relative stake of its pool."
---   , DocMsg
---       ["PickedPeers"]
---       []
---       "Trace for the number of peers we wanted to pick and the list of peers picked."
---   , DocMsg
---       ["FetchingNewLedgerState"]
---       []
---       "Trace for fetching a new list of peers from the ledger. Int is the number of peers\
---       \ returned."
---   , DocMsg
---       ["DisabledLedgerPeers"]
---       []
---       "Trace for when getting peers from the ledger is disabled, that is DontUseLedger."
---   , DocMsg
---       ["TraceUseLedgerAfter"]
---       []
---       "Trace UseLedgerAfter value."
---   , DocMsg
---       ["WaitingOnRequest"]
---       []
---       ""
---   , DocMsg
---       ["RequestForPeers"]
---       []
---       "RequestForPeers (NumberOfPeers 1)"
---   , DocMsg
---       ["ReusingLedgerState"]
---       []
---       ""
---   , DocMsg
---       ["FallingBackToBootstrapPeers"]
---       []
---       ""
---   ]
+  forMachine _dtal (ND.RunLocalServer localAddress) = mconcat
+    [ "kind" .= String "RunLocalServer"
+    , "localAddress" .= String (pack (show localAddress))
+    ]
+  forMachine _dtal (ND.UsingSystemdSocket localAddress) = mconcat
+    [ "kind" .= String "UsingSystemdSocket"
+    , "path" .= String (pack . show $ localAddress)
+    ]
+
+  forMachine _dtal (ND.CreateSystemdSocketForSnocketPath localAddress) = mconcat
+    [ "kind" .= String "CreateSystemdSocketForSnocketPath"
+    , "path" .= String (pack . show $ localAddress)
+    ]
+  forMachine _dtal (ND.CreatedLocalSocket localAddress) = mconcat
+    [ "kind" .= String "CreatedLocalSocket"
+    , "path" .= String (pack . show $ localAddress)
+    ]
+  forMachine _dtal (ND.ConfiguringLocalSocket localAddress socket) = mconcat
+    [ "kind" .= String "ConfiguringLocalSocket"
+    , "path" .= String (pack . show $ localAddress)
+    , "socket" .= String (pack (show socket))
+    ]
+  forMachine _dtal (ND.ListeningLocalSocket localAddress socket) = mconcat
+    [ "kind" .= String "ListeningLocalSocket"
+    , "path" .=  String (pack . show $ localAddress)
+    , "socket" .= String (pack (show socket))
+    ]
+  forMachine _dtal (ND.LocalSocketUp localAddress fd) = mconcat
+    [ "kind" .= String "LocalSocketUp"
+    , "path" .= String (pack . show $ localAddress)
+    , "socket" .= String (pack (show fd))
+    ]
+  forMachine _dtal (ND.CreatingServerSocket socket) = mconcat
+    [ "kind" .= String "CreatingServerSocket"
+    , "socket" .= String (pack (show socket))
+    ]
+  forMachine _dtal (ND.ListeningServerSocket socket) = mconcat
+    [ "kind" .= String "ListeningServerSocket"
+    , "socket" .= String (pack (show socket))
+    ]
+  forMachine _dtal (ND.ServerSocketUp socket) = mconcat
+    [ "kind" .= String "ServerSocketUp"
+    , "socket" .= String (pack (show socket))
+    ]
+  forMachine _dtal (ND.ConfiguringServerSocket socket) = mconcat
+    [ "kind" .= String "ConfiguringServerSocket"
+    , "socket" .= String (pack (show socket))
+    ]
+  forMachine _dtal (ND.UnsupportedLocalSystemdSocket path) = mconcat
+    [ "kind" .= String "UnsupportedLocalSystemdSocket"
+    , "path" .= String (pack (show path))
+    ]
+  forMachine _dtal ND.UnsupportedReadySocketCase = mconcat
+    [ "kind" .= String "UnsupportedReadySocketCase"
+    ]
+  forMachine _dtal (ND.DiffusionErrored exception) = mconcat
+    [ "kind" .= String "DiffusionErrored"
+    , "path" .= String (pack (show exception))
+    ]
+  forMachine _dtal (ND.SystemdSocketConfiguration config) = mconcat
+    [ "kind" .= String "SystemdSocketConfiguration"
+    , "path" .= String (pack (show config))
+    ]
+
+instance MetaTrace (ND.DiffusionTracer ntnAddr ntcAddr) where
+    namespaceFor ND.RunServer {} =
+      Namespace [] ["RunServer"]
+    namespaceFor ND.RunLocalServer {} =
+      Namespace [] ["RunLocalServer"]
+    namespaceFor ND.UsingSystemdSocket {} =
+      Namespace [] ["UsingSystemdSocket"]
+    namespaceFor ND.CreateSystemdSocketForSnocketPath {} =
+      Namespace [] ["CreateSystemdSocketForSnocketPath"]
+    namespaceFor ND.CreatedLocalSocket {} =
+      Namespace [] ["CreatedLocalSocket"]
+    namespaceFor ND.ConfiguringLocalSocket {} =
+      Namespace [] ["ConfiguringLocalSocket"]
+    namespaceFor ND.ListeningLocalSocket {} =
+      Namespace [] ["ListeningLocalSocket"]
+    namespaceFor ND.LocalSocketUp {} =
+      Namespace [] ["LocalSocketUp"]
+    namespaceFor ND.CreatingServerSocket {} =
+      Namespace [] ["CreatingServerSocket"]
+    namespaceFor ND.ListeningServerSocket {} =
+      Namespace [] ["ListeningServerSocket"]
+    namespaceFor ND.ServerSocketUp {} =
+      Namespace [] ["ServerSocketUp"]
+    namespaceFor ND.ConfiguringServerSocket {} =
+      Namespace [] ["ConfiguringServerSocket"]
+    namespaceFor ND.UnsupportedLocalSystemdSocket {} =
+      Namespace [] ["UnsupportedLocalSystemdSocket"]
+    namespaceFor ND.UnsupportedReadySocketCase {} =
+      Namespace [] ["UnsupportedReadySocketCase"]
+    namespaceFor ND.DiffusionErrored {} =
+      Namespace [] ["DiffusionErrored"]
+    namespaceFor ND.SystemdSocketConfiguration {} =
+      Namespace [] ["SystemdSocketConfiguration"]
+
+    severityFor (Namespace _ ["RunServer"]) _ = Just Info
+    severityFor (Namespace _ ["RunLocalServer"]) _ = Just Info
+    severityFor (Namespace _ ["UsingSystemdSocket"]) _ = Just Info
+    severityFor (Namespace _ ["CreateSystemdSocketForSnocketPath"]) _ = Just Info
+    severityFor (Namespace _ ["CreatedLocalSocket"]) _ = Just Info
+    severityFor (Namespace _ ["ConfiguringLocalSocket"]) _ = Just Info
+    severityFor (Namespace _ ["ListeningLocalSocket"]) _ = Just Info
+    severityFor (Namespace _ ["LocalSocketUp"]) _ = Just Info
+    severityFor (Namespace _ ["CreatingServerSocket"]) _ = Just Info
+    severityFor (Namespace _ ["ListeningServerSocket"]) _ = Just Info
+    severityFor (Namespace _ ["ServerSocketUp"]) _ = Just Info
+    severityFor (Namespace _ ["ConfiguringServerSocket"]) _ = Just Info
+    severityFor (Namespace _ ["UnsupportedLocalSystemdSocket"]) _ = Just Warning
+    severityFor (Namespace _ ["UnsupportedReadySocketCase"]) _ = Just Info
+    severityFor (Namespace _ ["DiffusionErrored"]) _ = Just Critical
+    severityFor (Namespace _ ["SystemdSocketConfiguration"]) _ = Just Warning
+    severityFor _ _ = Nothing
+
+    documentFor (Namespace _ ["RunServer"]) = Just
+      "RunServer"
+    documentFor (Namespace _ ["RunLocalServer"]) = Just
+      "RunLocalServer"
+    documentFor (Namespace _ ["UsingSystemdSocket"]) = Just
+      "UsingSystemdSocket"
+    documentFor (Namespace _ ["CreateSystemdSocketForSnocketPath"]) = Just
+      "CreateSystemdSocketForSnocketPath"
+    documentFor (Namespace _ ["CreatedLocalSocket"]) = Just
+      "CreatedLocalSocket"
+    documentFor (Namespace _ ["ConfiguringLocalSocket"]) = Just
+      "ConfiguringLocalSocket"
+    documentFor (Namespace _ ["ListeningLocalSocket"]) = Just
+      "ListeningLocalSocket"
+    documentFor (Namespace _ ["LocalSocketUp"]) = Just
+      "LocalSocketUp"
+    documentFor (Namespace _ ["CreatingServerSocket"]) = Just
+      "CreatingServerSocket"
+    documentFor (Namespace _ ["ListeningServerSocket"]) = Just
+      "ListeningServerSocket"
+    documentFor (Namespace _ ["ServerSocketUp"]) = Just
+      "ServerSocketUp"
+    documentFor (Namespace _ ["ConfiguringServerSocket"]) = Just
+      "ConfiguringServerSocket"
+    documentFor (Namespace _ ["UnsupportedLocalSystemdSocket"]) = Just
+      "UnsupportedLocalSystemdSocket"
+    documentFor (Namespace _ ["UnsupportedReadySocketCase"]) = Just
+      "UnsupportedReadySocketCase"
+    documentFor (Namespace _ ["DiffusionErrored"]) = Just
+      "DiffusionErrored"
+    documentFor (Namespace _ ["SystemdSocketConfiguration"]) = Just
+      "SystemdSocketConfiguration"
+
+    allNamespaces = [
+        Namespace [] ["RunServer"]
+      , Namespace [] ["RunLocalServer"]
+      , Namespace [] ["UsingSystemdSocket"]
+      , Namespace [] ["CreateSystemdSocketForSnocketPath"]
+      , Namespace [] ["CreatedLocalSocket"]
+      , Namespace [] ["ConfiguringLocalSocket"]
+      , Namespace [] ["ListeningLocalSocket"]
+      , Namespace [] ["LocalSocketUp"]
+      , Namespace [] ["CreatingServerSocket"]
+      , Namespace [] ["ListeningServerSocket"]
+      , Namespace [] ["ServerSocketUp"]
+      , Namespace [] ["ConfiguringServerSocket"]
+      , Namespace [] ["UnsupportedLocalSystemdSocket"]
+      , Namespace [] ["UnsupportedReadySocketCase"]
+      , Namespace [] ["DiffusionErrored"]
+      , Namespace [] ["SystemdSocketConfiguration"]
+      ]
+
+--------------------------------------------------------------------------------
+-- LedgerPeers Tracer
+--------------------------------------------------------------------------------
+
+instance LogFormatting TraceLedgerPeers where
+  forMachine _dtal (PickedPeer addr _ackStake stake) =
+    mconcat
+      [ "kind" .= String "PickedPeer"
+      , "address" .= show addr
+      , "relativeStake" .= (realToFrac (unPoolStake stake) :: Double)
+      ]
+  forMachine _dtal (PickedPeers (NumberOfPeers n) addrs) =
+    mconcat
+      [ "kind" .= String "PickedPeers"
+      , "desiredCount" .= n
+      , "count" .= length addrs
+      , "addresses" .= show addrs
+      ]
+  forMachine _dtal (FetchingNewLedgerState cnt) =
+    mconcat
+      [ "kind" .= String "FetchingNewLedgerState"
+      , "numberOfPools" .= cnt
+      ]
+  forMachine _dtal DisabledLedgerPeers =
+    mconcat
+      [ "kind" .= String "DisabledLedgerPeers"
+      ]
+  forMachine _dtal (TraceUseLedgerAfter ula) =
+    mconcat
+      [ "kind" .= String "UseLedgerAfter"
+      , "useLedgerAfter" .= UseLedger ula
+      ]
+  forMachine _dtal WaitingOnRequest =
+    mconcat
+      [ "kind" .= String "WaitingOnRequest"
+      ]
+  forMachine _dtal (RequestForPeers (NumberOfPeers np)) =
+    mconcat
+      [ "kind" .= String "RequestForPeers"
+      , "numberOfPeers" .= np
+      ]
+  forMachine _dtal (ReusingLedgerState cnt age) =
+    mconcat
+      [ "kind" .= String "ReusingLedgerState"
+      , "numberOfPools" .= cnt
+      , "ledgerStateAge" .= age
+      ]
+  forMachine _dtal FallingBackToBootstrapPeers =
+    mconcat
+      [ "kind" .= String "FallingBackToBootstrapPeers"
+      ]
+
+instance MetaTrace TraceLedgerPeers where
+    namespaceFor PickedPeer {} =
+      Namespace [] ["PickedPeer"]
+    namespaceFor PickedPeers {} =
+      Namespace [] ["PickedPeers"]
+    namespaceFor FetchingNewLedgerState {} =
+      Namespace [] ["FetchingNewLedgerState"]
+    namespaceFor DisabledLedgerPeers {} =
+      Namespace [] ["DisabledLedgerPeers"]
+    namespaceFor TraceUseLedgerAfter {} =
+      Namespace [] ["TraceUseLedgerAfter"]
+    namespaceFor WaitingOnRequest {} =
+      Namespace [] ["WaitingOnRequest"]
+    namespaceFor RequestForPeers {} =
+      Namespace [] ["RequestForPeers"]
+    namespaceFor ReusingLedgerState {} =
+      Namespace [] ["ReusingLedgerState"]
+    namespaceFor FallingBackToBootstrapPeers {} =
+      Namespace [] ["FallingBackToBootstrapPeers"]
+
+    severityFor (Namespace _ ["PickedPeer"]) _ = Just Debug
+    severityFor (Namespace _ ["PickedPeers"]) _ = Just Info
+    severityFor (Namespace _ ["FetchingNewLedgerState"]) _ = Just Info
+    severityFor (Namespace _ ["DisabledLedgerPeers"]) _ = Just Info
+    severityFor (Namespace _ ["TraceUseLedgerAfter"]) _ = Just Info
+    severityFor (Namespace _ ["WaitingOnRequest"]) _ = Just Debug
+    severityFor (Namespace _ ["RequestForPeers"]) _ = Just Debug
+    severityFor (Namespace _ ["ReusingLedgerState"]) _ = Just Debug
+    severityFor (Namespace _ ["FallingBackToBootstrapPeers"]) _ = Just Info
+    severityFor _ _ = Nothing
+
+    documentFor (Namespace _ ["PickedPeer"]) = Just
+      "Trace for a peer picked with accumulated and relative stake of its pool."
+    documentFor (Namespace _ ["PickedPeers"]) = Just
+      "Trace for the number of peers we wanted to pick and the list of peers picked."
+    documentFor (Namespace _ ["FetchingNewLedgerState"]) = Just
+      "Trace for fetching a new list of peers from the ledger. Int is the number of peers\
+      \ returned."
+    documentFor (Namespace _ ["DisabledLedgerPeers"]) = Just
+      "Trace for when getting peers from the ledger is disabled, that is DontUseLedger."
+    documentFor (Namespace _ ["TraceUseLedgerAfter"]) = Just
+      "Trace UseLedgerAfter value."
+    documentFor (Namespace _ ["WaitingOnRequest"]) = Just
+      ""
+    documentFor (Namespace _ ["RequestForPeers"]) = Just
+      "RequestForPeers (NumberOfPeers 1)"
+    documentFor (Namespace _ ["ReusingLedgerState"]) = Just
+      ""
+    documentFor (Namespace _ ["FallingBackToBootstrapPeers"]) = Just
+      ""
+    documentFor _ = Nothing
+
+    allNamespaces = [
+        Namespace [] ["PickedPeer"]
+      , Namespace [] ["PickedPeers"]
+      , Namespace [] ["FetchingNewLedgerState"]
+      , Namespace [] ["DisabledLedgerPeers"]
+      , Namespace [] ["TraceUseLedgerAfter"]
+      , Namespace [] ["WaitingOnRequest"]
+      , Namespace [] ["RequestForPeers"]
+      , Namespace [] ["ReusingLedgerState"]
+      , Namespace [] ["FallingBackToBootstrapPeers"]
+      ]

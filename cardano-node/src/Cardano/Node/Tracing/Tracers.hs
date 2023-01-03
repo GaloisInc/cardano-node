@@ -176,9 +176,9 @@ mkDispatchTracers nodeKernel trBase trForward mbTrEKG trDataPoint trConfig enabl
                       <> Tracer (traceWith replayBlockTr')
                       <> Tracer (SR.traceNodeStateChainDB p nodeStateDP)
       , consensusTracers = consensusTr
-      -- , nodeToClientTracers = nodeToClientTr
-      -- , nodeToNodeTracers = nodeToNodeTr
-      -- , diffusionTracers = diffusionTr
+      , nodeToClientTracers = nodeToClientTr
+      , nodeToNodeTracers = nodeToNodeTr
+      , diffusionTracers = diffusionTr
       -- , diffusionTracersExtra = diffusionTrExtra
       , startupTracer   = Tracer (traceWith startupTr)
                          <> Tracer (SR.traceNodeStateStartup nodeStateDP)
@@ -462,27 +462,21 @@ mkDiffusionTracers  trBase trForward mbTrEKG _trDataPoint trConfig = do
                 ["Net", "Handshake", "Remote"]
     configureTracers trConfig [dtHandshakeTr]
 
---     dtLocalHandshakeTr  <-  mkCardanoTracer
---                 trBase trForward mbTrEKG
---                 ["Net", "Handshake", "Local"]
---                 namesForLocalHandshake
---                 severityLocalHandshake
---                 allPublic
---     configureTracers trConfig docLocalHandshake [dtLocalHandshakeTr]
---     dtDiffusionInitializationTr   <-  mkCardanoTracer
---                 trBase trForward mbTrEKG
---                 ["Startup", "DiffusionInit"]
---                 namesForDiffusionInit
---                 severityDiffusionInit
---                 allPublic
---     configureTracers trConfig docDiffusionInit [dtDiffusionInitializationTr]
---     dtLedgerPeersTr   <- mkCardanoTracer
---                 trBase trForward mbTrEKG
---                 ["Net", "Peers", "Ledger"]
---                 namesForLedgerPeers
---                 severityLedgerPeers
---                 allPublic
---     configureTracers trConfig docLedgerPeers [dtLedgerPeersTr]
+    dtLocalHandshakeTr  <-  mkCardanoTracer
+                trBase trForward mbTrEKG
+                ["Net", "Handshake", "Local"]
+    configureTracers trConfig [dtLocalHandshakeTr]
+
+    dtDiffusionInitializationTr   <-  mkCardanoTracer
+                trBase trForward mbTrEKG
+                ["Startup", "DiffusionInit"]
+    configureTracers trConfig [dtDiffusionInitializationTr]
+
+    dtLedgerPeersTr   <- mkCardanoTracer
+                trBase trForward mbTrEKG
+                ["Net", "Peers", "Ledger"]
+    configureTracers trConfig [dtLedgerPeersTr]
+
     pure $ Diffusion.Tracers
        { Diffusion.dtMuxTracer                     = Tracer $
            traceWith dtMuxTr
@@ -490,12 +484,12 @@ mkDiffusionTracers  trBase trForward mbTrEKG _trDataPoint trConfig = do
            traceWith dtLocalMuxTr
        , Diffusion.dtHandshakeTracer               = Tracer $
            traceWith dtHandshakeTr
-      --  , Diffusion.dtLocalHandshakeTracer          = Tracer $
-      --      traceWith dtLocalHandshakeTr
-      --  , Diffusion.dtDiffusionTracer               = Tracer $
-      --      traceWith dtDiffusionInitializationTr
-      --  , Diffusion.dtLedgerPeersTracer             = Tracer $
-      --      traceWith dtLedgerPeersTr
+       , Diffusion.dtLocalHandshakeTracer          = Tracer $
+           traceWith dtLocalHandshakeTr
+       , Diffusion.dtDiffusionTracer               = Tracer $
+           traceWith dtDiffusionInitializationTr
+       , Diffusion.dtLedgerPeersTracer             = Tracer $
+           traceWith dtLedgerPeersTr
        }
 
 -- mkDiffusionTracersExtra  :: forall p2p.
