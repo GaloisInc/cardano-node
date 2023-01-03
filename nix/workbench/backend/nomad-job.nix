@@ -69,7 +69,7 @@ let
   # collections of one or more tasks. Job names are unique per region or
   # namespace.
   # https://developer.hashicorp.com/nomad/docs/job-specification/job
-  clusterJob = { job."workbench-cluster-job" = {
+  clusterJob = { job."workbench-cluster-job" = jobDefaults // {
 
     # Specifies the Nomad scheduler to use. Nomad provides the service, system,
     # batch, and sysbatch (new in Nomad 1.2) schedulers.
@@ -124,66 +124,11 @@ let
     # stored after job submission.
     consul_token = "";
 
-    #############################
-    # Job miscellaneous defaults:
-    #############################
-
-    # Controls whether the scheduler can make partial placements if optimistic
-    # scheduling resulted in an oversubscribed node. This does not control
-    # whether all allocations for the job, where all would be the desired count
-    # for each task group, must be placed atomically. This should only be used
-    # for special circumstances.
-    all_at_once = false;
-
-    # This can be provided multiple times to define additional constraints. See
-    # the Nomad constraint reference for more details.
-    # https://developer.hashicorp.com/nomad/docs/job-specification/constraint
-    constraint = null;
-
-    # This can be provided multiple times to define preferred placement
-    # criteria. See the Nomad affinity reference for more details.
-    affinity = null;
-
-    # Specifies the groups strategy for migrating off of draining nodes. If
-    # omitted, a default migration strategy is applied. Only service jobs with a
-    # count greater than 1 support migrate stanzas.
-    migrate = null;
-
-    # The "multiregion" stanza specifies that a job will be deployed to multiple
-    # federated regions. If omitted, the job will be deployed to a single region
-    # - the one specified by the region field or the `-region` command line flag
-    # to `nomad job run`.
-    multiregion = null;
-
-    # Specifies the job as a parameterized job such that it can be dispatched
-    # against.
-    parameterized = null;
-
-    # Allows the job to be scheduled at fixed times, dates or intervals.
-    periodic = null;
-
-    # Specifies the job priority which is used to prioritize scheduling and
-    # access to resources. Must be between 1 and 100 inclusively, with a larger
-    # value corresponding to a higher priority. Priority only has an effect when
-    # job preemption is enabled. It does not have an effect on which of multiple
-    # pending jobs is run first.
-    priority = 50;
-
-    # This can be provided multiple times to define criteria for spreading
-    # allocations across a node attribute or metadata. See the Nomad spread
-    # reference for more details.
-    # https://developer.hashicorp.com/nomad/docs/job-specification/spread
-    spread = null;
-
-    # Specifies the task's update strategy. When omitted, a default update
-    # strategy is applied.
-    update = null;
-
     # A group defines a series of tasks that should be co-located
     # on the same client (host). All tasks within a group will be
     # placed on the same host.
     # https://developer.hashicorp.com/nomad/docs/job-specification/group
-    group."workbench-cluster-job-group" = {
+    group."workbench-cluster-job-group" = groupDefaults // {
 
       # Specifies the number of instances that should be running under for this
       # group. This value must be non-negative. This defaults to the min value
@@ -258,78 +203,11 @@ let
       # namespace = "";
       # Not available as the documentations says: Extraneous JSON object property; No argument or block type is named "namespace".
 
-      ###############################
-      # Group miscellaneous defaults:
-      ###############################
-
-      # This can be provided multiple times to define preferred placement
-      # criteria
-      affinity = null;
-
-      # Specifies user-defined constraints on the task. This can be provided
-      # multiple times to define additional constraints.
-      constraint = null;
-
-      # Specifies the ephemeral disk requirements of the group. Ephemeral disks
-      # can be marked as sticky and support live data migrations.
-      ephemeral_disk = null;
-
-      # Specifies a duration during which a Nomad client will attempt to
-      # reconnect allocations after it fails to heartbeat in the heartbeat_grace
-      # window. See the example code below for more details. This setting cannot
-      # be used with stop_after_client_disconnect.
-      # max_client_disconnect = "";
-      # Error using the documentation default: Unsuitable value type; Unsuitable duration value: time: invalid duration ""
-
-      # Specifies the groups strategy for migrating off of draining nodes. If
-      # omitted, a default migration strategy is applied. Only service jobs with
-      # a count greater than 1 support migrate stanzas.
-      migrate = null;
-
-      # Specifies integrations with Consul for service discovery. Nomad
-      # automatically registers each service when an allocation is started and
-      # de-registers them when the allocation is destroyed.
-      service = null;
-
-      # Specifies the duration to wait when stopping a group's tasks. The delay
-      # occurs between Consul deregistration and sending each task a shutdown
-      # signal. Ideally, services would fail healthchecks once they receive a
-      # shutdown signal. Alternatively shutdown_delay may be set to give
-      # in-flight requests time to complete before shutting down. A group level
-      # shutdown_delay will run regardless if there are any defined group
-      # services. In addition, tasks may have their own shutdown_delay which
-      # waits between deregistering task services and stopping the task.
-      shutdown_delay = "0s";
-
-      # Specifies a duration after which a Nomad client will stop allocations,
-      # if it cannot communicate with the servers. By default, a client will not
-      # stop an allocation until explicitly told to by a server. A client that
-      # fails to heartbeat to a server within the heartbeat_grace window and any
-      # allocations running on it will be marked "lost" and Nomad will schedule
-      # replacement allocations. The replaced allocations will normally continue
-      # to run on the non-responsive client. But you may want them to stop
-      # instead — for example, allocations requiring exclusive access to an
-      # external resource. When specified, the Nomad client will stop them after
-      # this duration. The Nomad client process must be running for this to
-      # occur. This setting cannot be used with max_client_disconnect.
-      # stop_after_client_disconnect = "";
-      # Error using the documentation default: Unsuitable value type; Unsuitable duration value: time: invalid duration ""
-
-      # This can be provided multiple times to define criteria for spreading
-      # allocations across a node attribute or metadata. See the Nomad spread
-      # reference for more details.
-      # https://developer.hashicorp.com/nomad/docs/job-specification/spread
-      spread = null;
-
-      # Specifies the task's update strategy. When omitted, a default update
-      # strategy is applied.
-      update = null;
-
       # The task stanza creates an individual unit of work, such as a Docker
       # container, web application, or batch processing.
       # https://developer.hashicorp.com/nomad/docs/job-specification/task
       task = let
-        valueF = (name: nodeSpecs: volumes: {
+        valueF = (name: nodeSpecs: volumes: taskDefaults // {
 
           driver = "podman";
 
@@ -466,64 +344,6 @@ let
           # overrides any vault block set at the group or job level.
           vault = null;
 
-          ##############################
-          # Task miscellaneous defaults:
-          ##############################
-
-          # This can be provided multiple times to define preferred placement
-          # criteria
-          affinity = null;
-
-          # Defines an artifact to download before running the task. This may be
-          # specified multiple times to download multiple artifacts.
-          artifact = null;
-
-          # Specifies user-defined constraints on the task. This can be provided
-          # multiple times to define additional constraints.
-          constraint = null;
-
-          # Configures the task to have access to dispatch payloads.
-          dispatch_payload = null;
-
-          # Used internally to manage tasks according to the value of this
-          # field. Initial use case is for Consul Connect.
-          # kind = null;
-
-          # Specifies whether the task is the leader task of the task group. If
-          # set to true, when the leader task completes, all other tasks within
-          # the task group will be gracefully shutdown. The shutdown process
-          # starts by applying the shutdown_delay if configured. It then stops
-          # the the leader task first, followed by non-sidecar and non-poststop
-          # tasks, and finally sidecar tasks. Once this process completes,
-          # post-stop tasks are triggered. See the lifecycle documentation for a
-          # complete description of task lifecycle management.
-          leader = false; # Only one task may be marked as leader!
-
-          # Specifies the minimum resource requirements such as RAM, CPU and
-          # devices.
-          resources = null;
-
-          # Specifies integrations with Consul for service discovery. Nomad
-          # automatically registers when a task is started and de-registers it
-          # when the task dies.
-          service = null;
-
-          # Specifies the duration to wait when killing a task between removing
-          # it from Consul and sending it a shutdown signal. Ideally services
-          # would fail healthchecks once they receive a shutdown signal.
-          # Alternatively shutdown_delay may be set to give in flight requests
-          # time to complete before shutting down. In addition, task groups may
-          # have their own shutdown_delay which waits between deregistering
-          # group services and stopping tasks.
-          shutdown_delay = "0s";
-
-          # Specifies the user that will run the task. Defaults to nobody for
-          # the "exec" and "java" drivers. "Docker" and "rkt" images specify
-          # their own default users. This can only be set on Linux platforms,
-          # and clients can restrict which drivers are allowed to run tasks as
-          # certain users.
-          # user = null;
-
         });
       in lib.listToAttrs (
         [
@@ -545,6 +365,192 @@ let
     };
 
   };};
+
+  jobDefaults = {
+    #############################
+    # Job miscellaneous defaults:
+    #############################
+
+    # Controls whether the scheduler can make partial placements if optimistic
+    # scheduling resulted in an oversubscribed node. This does not control
+    # whether all allocations for the job, where all would be the desired count
+    # for each task group, must be placed atomically. This should only be used
+    # for special circumstances.
+    all_at_once = false;
+
+    # This can be provided multiple times to define additional constraints. See
+    # the Nomad constraint reference for more details.
+    # https://developer.hashicorp.com/nomad/docs/job-specification/constraint
+    constraint = null;
+
+    # This can be provided multiple times to define preferred placement
+    # criteria. See the Nomad affinity reference for more details.
+    affinity = null;
+
+    # Specifies the groups strategy for migrating off of draining nodes. If
+    # omitted, a default migration strategy is applied. Only service jobs with a
+    # count greater than 1 support migrate stanzas.
+    migrate = null;
+
+    # The "multiregion" stanza specifies that a job will be deployed to multiple
+    # federated regions. If omitted, the job will be deployed to a single region
+    # - the one specified by the region field or the `-region` command line flag
+    # to `nomad job run`.
+    multiregion = null;
+
+    # Specifies the job as a parameterized job such that it can be dispatched
+    # against.
+    parameterized = null;
+
+    # Allows the job to be scheduled at fixed times, dates or intervals.
+    periodic = null;
+
+    # Specifies the job priority which is used to prioritize scheduling and
+    # access to resources. Must be between 1 and 100 inclusively, with a larger
+    # value corresponding to a higher priority. Priority only has an effect when
+    # job preemption is enabled. It does not have an effect on which of multiple
+    # pending jobs is run first.
+    priority = 50;
+
+    # This can be provided multiple times to define criteria for spreading
+    # allocations across a node attribute or metadata. See the Nomad spread
+    # reference for more details.
+    # https://developer.hashicorp.com/nomad/docs/job-specification/spread
+    spread = null;
+
+    # Specifies the task's update strategy. When omitted, a default update
+    # strategy is applied.
+    update = null;
+  };
+
+  groupDefaults = {
+    ###############################
+    # Group miscellaneous defaults:
+    ###############################
+
+    # This can be provided multiple times to define preferred placement
+    # criteria
+    affinity = null;
+
+    # Specifies user-defined constraints on the task. This can be provided
+    # multiple times to define additional constraints.
+    constraint = null;
+
+    # Specifies the ephemeral disk requirements of the group. Ephemeral disks
+    # can be marked as sticky and support live data migrations.
+    ephemeral_disk = null;
+
+    # Specifies a duration during which a Nomad client will attempt to
+    # reconnect allocations after it fails to heartbeat in the heartbeat_grace
+    # window. See the example code below for more details. This setting cannot
+    # be used with stop_after_client_disconnect.
+    # max_client_disconnect = "";
+    # Error using the documentation default: Unsuitable value type; Unsuitable duration value: time: invalid duration ""
+
+    # Specifies the groups strategy for migrating off of draining nodes. If
+    # omitted, a default migration strategy is applied. Only service jobs with
+    # a count greater than 1 support migrate stanzas.
+    migrate = null;
+
+    # Specifies integrations with Consul for service discovery. Nomad
+    # automatically registers each service when an allocation is started and
+    # de-registers them when the allocation is destroyed.
+    service = null;
+
+    # Specifies the duration to wait when stopping a group's tasks. The delay
+    # occurs between Consul deregistration and sending each task a shutdown
+    # signal. Ideally, services would fail healthchecks once they receive a
+    # shutdown signal. Alternatively shutdown_delay may be set to give
+    # in-flight requests time to complete before shutting down. A group level
+    # shutdown_delay will run regardless if there are any defined group
+    # services. In addition, tasks may have their own shutdown_delay which
+    # waits between deregistering task services and stopping the task.
+    shutdown_delay = "0s";
+
+    # Specifies a duration after which a Nomad client will stop allocations,
+    # if it cannot communicate with the servers. By default, a client will not
+    # stop an allocation until explicitly told to by a server. A client that
+    # fails to heartbeat to a server within the heartbeat_grace window and any
+    # allocations running on it will be marked "lost" and Nomad will schedule
+    # replacement allocations. The replaced allocations will normally continue
+    # to run on the non-responsive client. But you may want them to stop
+    # instead — for example, allocations requiring exclusive access to an
+    # external resource. When specified, the Nomad client will stop them after
+    # this duration. The Nomad client process must be running for this to
+    # occur. This setting cannot be used with max_client_disconnect.
+    # stop_after_client_disconnect = "";
+    # Error using the documentation default: Unsuitable value type; Unsuitable duration value: time: invalid duration ""
+
+    # This can be provided multiple times to define criteria for spreading
+    # allocations across a node attribute or metadata. See the Nomad spread
+    # reference for more details.
+    # https://developer.hashicorp.com/nomad/docs/job-specification/spread
+    spread = null;
+
+    # Specifies the task's update strategy. When omitted, a default update
+    # strategy is applied.
+    update = null;
+  };
+
+  taskDefaults = {
+    ##############################
+    # Task miscellaneous defaults:
+    ##############################
+
+    # This can be provided multiple times to define preferred placement
+    # criteria
+    affinity = null;
+
+    # Defines an artifact to download before running the task. This may be
+    # specified multiple times to download multiple artifacts.
+    artifact = null;
+
+    # Specifies user-defined constraints on the task. This can be provided
+    # multiple times to define additional constraints.
+    constraint = null;
+
+    # Configures the task to have access to dispatch payloads.
+    dispatch_payload = null;
+
+    # Used internally to manage tasks according to the value of this
+    # field. Initial use case is for Consul Connect.
+    # kind = null;
+
+    # Specifies whether the task is the leader task of the task group. If
+    # set to true, when the leader task completes, all other tasks within
+    # the task group will be gracefully shutdown. The shutdown process
+    # starts by applying the shutdown_delay if configured. It then stops
+    # the the leader task first, followed by non-sidecar and non-poststop
+    # tasks, and finally sidecar tasks. Once this process completes,
+    # post-stop tasks are triggered. See the lifecycle documentation for a
+    # complete description of task lifecycle management.
+    leader = false; # Only one task may be marked as leader!
+
+    # Specifies the minimum resource requirements such as RAM, CPU and
+    # devices.
+    resources = null;
+
+    # Specifies integrations with Consul for service discovery. Nomad
+    # automatically registers when a task is started and de-registers it
+    # when the task dies.
+    service = null;
+
+    # Specifies the duration to wait when killing a task between removing
+    # it from Consul and sending it a shutdown signal. Ideally services
+    # would fail healthchecks once they receive a shutdown signal.
+    # Alternatively shutdown_delay may be set to give in flight requests
+    # time to complete before shutting down. In addition, task groups may
+    # have their own shutdown_delay which waits between deregistering
+    # group services and stopping tasks.
+    shutdown_delay = "0s";
+
+    # Specifies the user that will run the task. Defaults to nobody for
+    # the "exec" and "java" drivers. "Docker" and "rkt" images specify
+    # their own default users. This can only be set on Linux platforms,
+    # and clients can restrict which drivers are allowed to run tasks as
+    # certain users.
+    # user = null;
+  };
 
 in pkgs.writeText "nomad-job.json"
   (lib.generators.toJSON {} clusterJob)
