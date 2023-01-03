@@ -67,6 +67,13 @@ let
   materialise-profile =
     { stateDir, profileNix }:
       let
+        ociImages =
+          import ./oci-images.nix
+            { inherit pkgs lib;
+              inherit
+                (pkgs.cardanoNodePackages)
+                cardano-node cardano-tracer tx-generator;
+            };
         unixHttpServerPort = "/tmp/supervisor.sock";
         supervisorConf =
           import ./supervisor-conf.nix
@@ -74,39 +81,23 @@ let
               inherit pkgs lib stateDir;
               inherit unixHttpServerPort;
             };
-        ociImages =
-          import ./oci-images.nix
-            { inherit pkgs;
-              inherit
-                (pkgs.cardanoNodePackages)
-                cardano-node cardano-tracer tx-generator;
-            };
-        nomadJobJSONPath =
+        nomadJobJSON =
           import ./nomad-job.nix
             { inherit pkgs lib stateDir;
               inherit profileNix;
-              inherit (ociImages) clusterImage;
+              inherit ociImages;
               inherit unixHttpServerPort;
               inherit supervisorConf;
             };
       in pkgs.runCommand "workbench-backend-output-${profileNix.name}-${name}"
-        (rec {
-          # All In One
-          clusterImage = ociImages.clusterImage;
-          clusterImageCopyToPodman = clusterImage.copyToPodman;
-          clusterImageName = clusterImage.imageName;
-          clusterImageTag = clusterImage.imageTag;
-          inherit nomadJobJSONPath;
+        ({
+          ociImagesJSON = ociImages.JSON;
+          inherit nomadJobJSON;
         })
         ''
         mkdir $out
-
-        ln -s $clusterImage                            $out/clusterImage
-        echo $clusterImageName                       > $out/clusterImageName
-        echo $clusterImageTag                        > $out/clusterImageTag
-        ln -s $clusterImageCopyToPodman/bin/copy-to-podman $out/clusterImageCopyToPodman
-
-        ln -s $nomadJobJSONPath                        $out/nomad-job.json
+        ln -s $ociImagesJSON                           $out/oci-images.json
+        ln -s $nomadJobJSON                            $out/nomad-job.json
         '';
 in
 {

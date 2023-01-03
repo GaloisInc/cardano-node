@@ -38,10 +38,10 @@ case "$op" in
         ## The one provided by the profile, the one used may suffer changes (jq).
         setenvjqstr 'nomad_job_file' "$profile_dir"/nomad-job.json
         ## Look up `cluster` OCI image's name and tag (also Nix profile).
-        setenvjqstr 'oci_image_name' ${WB_OCI_IMAGE_NAME:-$(cat "$profile_dir/clusterImageName")}
-        setenvjqstr 'oci_image_tag'  ${WB_OCI_IMAGE_TAG:-$(cat  "$profile_dir/clusterImageTag")}
+        setenvjqstr 'oci_image_name' ${WB_OCI_IMAGE_NAME:-$(jq -r '. ["clusterNode"]["imageName"]' "$profile_dir"/oci-images.json)}
+        setenvjqstr 'oci_image_tag'  ${WB_OCI_IMAGE_TAG:-$(jq -r '. ["clusterNode"]["imageTag"]' "$profile_dir"/oci-images.json)}
         ## Script that creates the OCI image from nix2container layered output.
-        setenvjqstr 'oci_image_skopeo_script' "$profile_dir/clusterImageCopyToPodman"
+        setenvjqstr 'oci_image_skopeo_script' $(jq -r '. ["clusterNode"]["copyToPodman"]' "$profile_dir"/oci-images.json)
 
         # Socket of the process that connects nomad-driver-podman with podman.
         # Can't reside inside $dir, can't use a path longer than 108 characters!

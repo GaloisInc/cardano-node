@@ -7,7 +7,7 @@
 , lib
 , stateDir
 , profileNix
-, clusterImage
+, ociImages
 , unixHttpServerPort
 , supervisorConf
 }:
@@ -419,7 +419,7 @@ let
             # missing), oci-archive and docker-archive. Images reference as
             # short-names will be treated according to user-configured
             # preferences.
-            image = "${clusterImage.imageName}:${clusterImage.imageTag}";
+            image = "${ociImages.value.clusterNode.imageName}:${ociImages.value.clusterNode.imageTag}";
 
             # Always pull the latest image on container start.
             force_pull = false;
