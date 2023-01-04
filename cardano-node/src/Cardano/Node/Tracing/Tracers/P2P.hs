@@ -8,630 +8,594 @@
 
 {-# OPTIONS_GHC -Wno-orphans  #-}
 
-module Cardano.Node.Tracing.Tracers.P2P () where
---   (
---     namesForLocalRootPeers
---   , severityLocalRootPeers
---   , docLocalRootPeers
+module Cardano.Node.Tracing.Tracers.P2P
+  () where
 
---   , namesForPublicRootPeers
---   , severityPublicRootPeers
---   , docPublicRootPeers
+import           Cardano.Logging
+import           Cardano.Prelude hiding (group, show)
+import           Data.Aeson (ToJSON, ToJSONKey, Value (..), object, toJSON, toJSONList, (.=))
+import           Data.Aeson.Types (listValue)
+import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
+import           Data.Text (pack)
+import           Network.Socket (SockAddr (..))
+import           Prelude (id, show)
 
---   , namesForPeerSelection
---   , severityPeerSelection
---   , docPeerSelection
+import           Cardano.Node.Configuration.TopologyP2P ()
+import           Cardano.Tracing.OrphanInstances.Network ()
 
---   , namesForDebugPeerSelection
---   , severityDebugPeerSelection
---   , docDebugPeerSelection
+import           Cardano.Node.Tracing.Tracers.NodeToNode ()
+import           Cardano.Node.Tracing.Tracers.NonP2P ()
 
---   , namesForPeerSelectionCounters
---   , severityPeerSelectionCounters
---   , docPeerSelectionCounters
+import           Ouroboros.Network.ConnectionHandler (ConnectionHandlerTrace (..))
+import           Ouroboros.Network.ConnectionId (ConnectionId (..))
+import           Ouroboros.Network.ConnectionManager.Types (ConnectionManagerCounters (..),
+                   ConnectionManagerTrace (..))
+import qualified Ouroboros.Network.ConnectionManager.Types as ConnectionManager
+import           Ouroboros.Network.InboundGovernor (InboundGovernorTrace (..))
+import qualified Ouroboros.Network.InboundGovernor as InboundGovernor
+import           Ouroboros.Network.InboundGovernor.State (InboundGovernorCounters (..))
+import qualified Ouroboros.Network.PeerSelection.EstablishedPeers as EstablishedPeers
+import           Ouroboros.Network.PeerSelection.Governor (DebugPeerSelection (..),
+                   PeerSelectionCounters (..), PeerSelectionState (..), PeerSelectionTargets (..),
+                   TracePeerSelection (..))
+import qualified Ouroboros.Network.PeerSelection.KnownPeers as KnownPeers
+import           Ouroboros.Network.PeerSelection.PeerStateActions (PeerSelectionActionsTrace (..))
+import           Ouroboros.Network.PeerSelection.RelayAccessPoint (RelayAccessPoint)
+import           Ouroboros.Network.PeerSelection.RootPeersDNS (TraceLocalRootPeers (..),
+                   TracePublicRootPeers (..))
+import           Ouroboros.Network.PeerSelection.Types ()
+import           Ouroboros.Network.RethrowPolicy (ErrorCommand (..))
+import           Ouroboros.Network.Server2 (ServerTrace (..))
+import           Ouroboros.Network.Snocket (LocalAddress (..))
 
---   , namesForPeerSelectionActions
---   , severityPeerSelectionActions
---   , docPeerSelectionActions
+--------------------------------------------------------------------------------
+-- LocalRootPeers Tracer
+--------------------------------------------------------------------------------
 
---   , namesForConnectionManager
---   , severityConnectionManager
---   , docConnectionManager
+instance (ToJSONKey ntnAddr, ToJSONKey RelayAccessPoint, Show ntnAddr, Show exception) =>
+    LogFormatting (TraceLocalRootPeers ntnAddr exception) where
+  forMachine _dtal (TraceLocalRootDomains groups) =
+    mconcat [ "kind" .= String "LocalRootDomains"
+             , "localRootDomains" .= toJSON groups
+             ]
+  forMachine _dtal (TraceLocalRootWaiting d dt) =
+    mconcat [ "kind" .= String "LocalRootWaiting"
+             , "domainAddress" .= toJSON d
+             , "diffTime" .= show dt
+             ]
+  forMachine _dtal (TraceLocalRootResult d res) =
+    mconcat [ "kind" .= String "LocalRootResult"
+             , "domainAddress" .= toJSON d
+             , "result" .= toJSONList res
+             ]
+  forMachine _dtal (TraceLocalRootGroups groups) =
+    mconcat [ "kind" .= String "LocalRootGroups"
+             , "localRootGroups" .= toJSON groups
+             ]
+  forMachine _dtal (TraceLocalRootFailure d exception) =
+    mconcat [ "kind" .= String "LocalRootFailure"
+             , "domainAddress" .= toJSON d
+             , "reason" .= show exception
+             ]
+  forMachine _dtal (TraceLocalRootError d exception) =
+    mconcat [ "kind" .= String "LocalRootError"
+             , "domainAddress" .= toJSON d
+             , "reason" .= show exception
+             ]
+  forHuman = pack . show
 
---   , namesForConnectionManagerTransition
---   , severityConnectionManagerTransition
---   , docConnectionManagerTransition
+instance MetaTrace (TraceLocalRootPeers ntnAddr exception) where
+  namespaceFor TraceLocalRootDomains {} = Namespace [] ["LocalRootDomains"]
+  namespaceFor TraceLocalRootWaiting {} = Namespace [] ["LocalRootWaiting"]
+  namespaceFor TraceLocalRootResult {} = Namespace [] ["LocalRootResult"]
+  namespaceFor TraceLocalRootGroups {} = Namespace [] ["LocalRootGroups"]
+  namespaceFor TraceLocalRootFailure {} = Namespace [] ["LocalRootFailure"]
+  namespaceFor TraceLocalRootError {} = Namespace [] ["LocalRootError"]
 
---   , namesForServer
---   , severityServer
---   , docServer
+  severityFor (Namespace [] ["LocalRootDomains"]) _ = Just Info
+  severityFor (Namespace [] ["LocalRootWaiting"]) _ = Just Info
+  severityFor (Namespace [] ["LocalRootResult"]) _ = Just Info
+  severityFor (Namespace [] ["LocalRootGroups"]) _ = Just Info
+  severityFor (Namespace [] ["LocalRootFailure"]) _ = Just Info
+  severityFor (Namespace [] ["LocalRootError"]) _ = Just Info
+  severityFor _ _ = Nothing
 
---   , namesForInboundGovernor
---   , severityInboundGovernor
---   , docInboundGovernorLocal
---   , docInboundGovernorRemote
+  documentFor (Namespace [] ["LocalRootDomains"]) = Just
+    ""
+  documentFor (Namespace [] ["LocalRootWaiting"]) = Just
+    ""
+  documentFor (Namespace [] ["LocalRootResult"]) = Just
+    ""
+  documentFor (Namespace [] ["LocalRootGroups"]) = Just
+    ""
+  documentFor (Namespace [] ["LocalRootFailure"]) = Just
+    ""
+  documentFor (Namespace [] ["LocalRootError"]) = Just
+    ""
+  documentFor _ = Nothing
 
---   , namesForInboundGovernorTransition
---   , severityInboundGovernorTransition
---   , docInboundGovernorTransition
+  allNamespaces =
+    [ Namespace [] ["LocalRootDomains"]
+    , Namespace [] ["LocalRootWaiting"]
+    , Namespace [] ["LocalRootResult"]
+    , Namespace [] ["LocalRootGroups"]
+    , Namespace [] ["LocalRootFailure"]
+    , Namespace [] ["LocalRootError"]
+    ]
 
---   ) where
+--------------------------------------------------------------------------------
+-- PublicRootPeers Tracer
+--------------------------------------------------------------------------------
 
--- import           Cardano.Logging
--- import           Cardano.Prelude hiding (group, show)
--- import           Data.Aeson (ToJSON, ToJSONKey, Value (..), object, toJSON, toJSONList, (.=))
--- import           Data.Aeson.Types (listValue)
--- import qualified Data.Map.Strict as Map
--- import qualified Data.Set as Set
--- import           Data.Text (pack)
--- import           Network.Socket (SockAddr (..))
--- import           Prelude (id, show)
+instance LogFormatting TracePublicRootPeers where
+  forMachine _dtal (TracePublicRootRelayAccessPoint relays) =
+    mconcat [ "kind" .= String "PublicRootRelayAddresses"
+             , "relayAddresses" .= toJSONList relays
+             ]
+  forMachine _dtal (TracePublicRootDomains domains) =
+    mconcat [ "kind" .= String "PublicRootDomains"
+             , "domainAddresses" .= toJSONList domains
+             ]
+  forMachine _dtal (TracePublicRootResult b res) =
+    mconcat [ "kind" .= String "PublicRootResult"
+             , "domain" .= show b
+             , "result" .= toJSONList res
+             ]
+  forMachine _dtal (TracePublicRootFailure b d) =
+    mconcat [ "kind" .= String "PublicRootFailure"
+             , "domain" .= show b
+             , "reason" .= show d
+             ]
+  forHuman = pack . show
 
--- import           Cardano.Node.Configuration.TopologyP2P ()
--- import           Cardano.Tracing.OrphanInstances.Network ()
+instance MetaTrace TracePublicRootPeers where
+  namespaceFor TracePublicRootRelayAccessPoint {} = Namespace [] ["PublicRootRelayAccessPoint"]
+  namespaceFor TracePublicRootDomains {} = Namespace [] ["PublicRootDomains"]
+  namespaceFor TracePublicRootResult {} = Namespace [] ["PublicRootResult"]
+  namespaceFor TracePublicRootFailure {} = Namespace [] ["PublicRootFailure"]
 
--- import           Cardano.Node.Tracing.Tracers.NodeToNode ()
--- import           Cardano.Node.Tracing.Tracers.NonP2P ()
+  severityFor (Namespace [] ["PublicRootRelayAccessPoint"]) _ = Just Info
+  severityFor (Namespace [] ["PublicRootDomains"]) _ = Just Info
+  severityFor (Namespace [] ["PublicRootResult"]) _ = Just Info
+  severityFor (Namespace [] ["PublicRootFailure"]) _ = Just Info
+  severityFor _ _ = Nothing
 
--- import           Ouroboros.Network.ConnectionHandler (ConnectionHandlerTrace (..))
--- import           Ouroboros.Network.ConnectionId (ConnectionId (..))
--- import           Ouroboros.Network.ConnectionManager.Types (ConnectionManagerCounters (..),
---                    ConnectionManagerTrace (..))
--- import qualified Ouroboros.Network.ConnectionManager.Types as ConnectionManager
--- import           Ouroboros.Network.InboundGovernor (InboundGovernorTrace (..))
--- import qualified Ouroboros.Network.InboundGovernor as InboundGovernor
--- import           Ouroboros.Network.InboundGovernor.State (InboundGovernorCounters (..))
--- import qualified Ouroboros.Network.PeerSelection.EstablishedPeers as EstablishedPeers
--- import           Ouroboros.Network.PeerSelection.Governor (DebugPeerSelection (..),
---                    PeerSelectionCounters (..), PeerSelectionState (..), PeerSelectionTargets (..),
---                    TracePeerSelection (..))
--- import qualified Ouroboros.Network.PeerSelection.KnownPeers as KnownPeers
--- import           Ouroboros.Network.PeerSelection.PeerStateActions (PeerSelectionActionsTrace (..))
--- import           Ouroboros.Network.PeerSelection.RelayAccessPoint (RelayAccessPoint)
--- import           Ouroboros.Network.PeerSelection.RootPeersDNS (TraceLocalRootPeers (..),
---                    TracePublicRootPeers (..))
--- import           Ouroboros.Network.PeerSelection.Types ()
--- import           Ouroboros.Network.RethrowPolicy (ErrorCommand (..))
--- import           Ouroboros.Network.Server2 (ServerTrace (..))
--- import           Ouroboros.Network.Snocket (LocalAddress (..))
+  documentFor (Namespace [] ["PublicRootRelayAccessPoint"]) = Just
+    ""
+  documentFor (Namespace [] ["PublicRootDomains"]) = Just
+    ""
+  documentFor (Namespace [] ["PublicRootResult"]) = Just
+    ""
+  documentFor (Namespace [] ["PublicRootFailure"]) = Just
+    ""
+  documentFor _ = Nothing
 
--- --------------------------------------------------------------------------------
--- -- LocalRootPeers Tracer
--- --------------------------------------------------------------------------------
+  allNamespaces = [
+      Namespace [] ["PublicRootRelayAccessPoint"]
+    , Namespace [] ["PublicRootDomains"]
+    , Namespace [] ["PublicRootResult"]
+    , Namespace [] ["PublicRootFailure"]
+    ]
 
--- namesForLocalRootPeers :: TraceLocalRootPeers ntnAddr resolverError -> [Text]
--- namesForLocalRootPeers TraceLocalRootDomains {} = ["LocalRootDomains"]
--- namesForLocalRootPeers TraceLocalRootWaiting {} = ["LocalRootWaiting"]
--- namesForLocalRootPeers TraceLocalRootResult {}  = ["LocalRootResult"]
--- namesForLocalRootPeers TraceLocalRootGroups {}  = ["LocalRootGroups"]
--- namesForLocalRootPeers TraceLocalRootFailure {} = ["LocalRootFailure"]
--- namesForLocalRootPeers TraceLocalRootError {}   = ["LocalRootError"]
+--------------------------------------------------------------------------------
+-- PeerSelection Tracer
+--------------------------------------------------------------------------------
 
--- severityLocalRootPeers :: TraceLocalRootPeers ntnAddr resolverError -> SeverityS
--- severityLocalRootPeers _ = Info
+instance LogFormatting (TracePeerSelection SockAddr) where
+  forMachine _dtal (TraceLocalRootPeersChanged lrp lrp') =
+    mconcat [ "kind" .= String "LocalRootPeersChanged"
+             , "previous" .= toJSON lrp
+             , "current" .= toJSON lrp'
+             ]
+  forMachine _dtal (TraceTargetsChanged pst pst') =
+    mconcat [ "kind" .= String "TargetsChanged"
+             , "previous" .= toJSON pst
+             , "current" .= toJSON pst'
+             ]
+  forMachine _dtal (TracePublicRootsRequest tRootPeers nRootPeers) =
+    mconcat [ "kind" .= String "PublicRootsRequest"
+             , "targetNumberOfRootPeers" .= tRootPeers
+             , "numberOfRootPeers" .= nRootPeers
+             ]
+  forMachine _dtal (TracePublicRootsResults res group dt) =
+    mconcat [ "kind" .= String "PublicRootsResults"
+             , "result" .= toJSONList (toList res)
+             , "group" .= group
+             , "diffTime" .= dt
+             ]
+  forMachine _dtal (TracePublicRootsFailure err group dt) =
+    mconcat [ "kind" .= String "PublicRootsFailure"
+             , "reason" .= show err
+             , "group" .= group
+             , "diffTime" .= dt
+             ]
+  forMachine _dtal (TraceGossipRequests targetKnown actualKnown aps sps) =
+    mconcat [ "kind" .= String "GossipRequests"
+             , "targetKnown" .= targetKnown
+             , "actualKnown" .= actualKnown
+             , "availablePeers" .= toJSONList (toList aps)
+             , "selectedPeers" .= toJSONList (toList sps)
+             ]
+  forMachine _dtal (TraceGossipResults res) =
+    mconcat [ "kind" .= String "GossipResults"
+             , "result" .= toJSONList (map ( bimap show id <$> ) res)
+             ]
+  forMachine _dtal (TraceForgetColdPeers targetKnown actualKnown sp) =
+    mconcat [ "kind" .= String "ForgeColdPeers"
+             , "targetKnown" .= targetKnown
+             , "actualKnown" .= actualKnown
+             , "selectedPeers" .= toJSONList (toList sp)
+             ]
+  forMachine _dtal (TracePromoteColdPeers targetKnown actualKnown sp) =
+    mconcat [ "kind" .= String "PromoteColdPeers"
+             , "targetEstablished" .= targetKnown
+             , "actualEstablished" .= actualKnown
+             , "selectedPeers" .= toJSONList (toList sp)
+             ]
+  forMachine _dtal (TracePromoteColdLocalPeers tLocalEst aLocalEst sp) =
+    mconcat [ "kind" .= String "PromoteColdLocalPeers"
+             , "targetLocalEstablished" .= tLocalEst
+             , "actualLocalEstablished" .= aLocalEst
+             , "selectedPeers" .= toJSONList (toList sp)
+             ]
+  forMachine _dtal (TracePromoteColdFailed tEst aEst p d err) =
+    mconcat [ "kind" .= String "PromoteColdFailed"
+             , "targetEstablished" .= tEst
+             , "actualEstablished" .= aEst
+             , "peer" .= toJSON p
+             , "delay" .= toJSON d
+             , "reason" .= show err
+             ]
+  forMachine _dtal (TracePromoteColdDone tEst aEst p) =
+    mconcat [ "kind" .= String "PromoteColdDone"
+             , "targetEstablished" .= tEst
+             , "actualEstablished" .= aEst
+             , "peer" .= toJSON p
+             ]
+  forMachine _dtal (TracePromoteWarmPeers tActive aActive sp) =
+    mconcat [ "kind" .= String "PromoteWarmPeers"
+             , "targetActive" .= tActive
+             , "actualActive" .= aActive
+             , "selectedPeers" .= toJSONList (toList sp)
+             ]
+  forMachine _dtal (TracePromoteWarmLocalPeers taa sp) =
+    mconcat [ "kind" .= String "PromoteWarmLocalPeers"
+             , "targetActualActive" .= toJSONList taa
+             , "selectedPeers" .= toJSONList (toList sp)
+             ]
+  forMachine _dtal (TracePromoteWarmFailed tActive aActive p err) =
+    mconcat [ "kind" .= String "PromoteWarmFailed"
+             , "targetActive" .= tActive
+             , "actualActive" .= aActive
+             , "peer" .= toJSON p
+             , "reason" .= show err
+             ]
+  forMachine _dtal (TracePromoteWarmDone tActive aActive p) =
+    mconcat [ "kind" .= String "PromoteWarmDone"
+             , "targetActive" .= tActive
+             , "actualActive" .= aActive
+             , "peer" .= toJSON p
+             ]
+  forMachine _dtal (TracePromoteWarmAborted tActive aActive p) =
+    mconcat [ "kind" .= String "PromoteWarmAborted"
+             , "targetActive" .= tActive
+             , "actualActive" .= aActive
+             , "peer" .= toJSON p
+             ]
+  forMachine _dtal (TraceDemoteWarmPeers tEst aEst sp) =
+    mconcat [ "kind" .= String "DemoteWarmPeers"
+             , "targetEstablished" .= tEst
+             , "actualEstablished" .= aEst
+             , "selectedPeers" .= toJSONList (toList sp)
+             ]
+  forMachine _dtal (TraceDemoteWarmFailed tEst aEst p err) =
+    mconcat [ "kind" .= String "DemoteWarmFailed"
+             , "targetEstablished" .= tEst
+             , "actualEstablished" .= aEst
+             , "peer" .= toJSON p
+             , "reason" .= show err
+             ]
+  forMachine _dtal (TraceDemoteWarmDone tEst aEst p) =
+    mconcat [ "kind" .= String "DemoteWarmDone"
+             , "targetEstablished" .= tEst
+             , "actualEstablished" .= aEst
+             , "peer" .= toJSON p
+             ]
+  forMachine _dtal (TraceDemoteHotPeers tActive aActive sp) =
+    mconcat [ "kind" .= String "DemoteHotPeers"
+             , "targetActive" .= tActive
+             , "actualActive" .= aActive
+             , "selectedPeers" .= toJSONList (toList sp)
+             ]
+  forMachine _dtal (TraceDemoteLocalHotPeers taa sp) =
+    mconcat [ "kind" .= String "DemoteLocalHotPeers"
+             , "targetActualActive" .= toJSONList taa
+             , "selectedPeers" .= toJSONList (toList sp)
+             ]
+  forMachine _dtal (TraceDemoteHotFailed tActive aActive p err) =
+    mconcat [ "kind" .= String "DemoteHotFailed"
+             , "targetActive" .= tActive
+             , "actualActive" .= aActive
+             , "peer" .= toJSON p
+             , "reason" .= show err
+             ]
+  forMachine _dtal (TraceDemoteHotDone tActive aActive p) =
+    mconcat [ "kind" .= String "DemoteHotDone"
+             , "targetActive" .= tActive
+             , "actualActive" .= aActive
+             , "peer" .= toJSON p
+             ]
+  forMachine _dtal (TraceDemoteAsynchronous msp) =
+    mconcat [ "kind" .= String "DemoteAsynchronous"
+             , "state" .= toJSON msp
+             ]
+  forMachine _dtal (TraceDemoteLocalAsynchronous msp) =
+    mconcat [ "kind" .= String "DemoteLocalAsynchronous"
+             , "state" .= toJSON msp
+             ]
+  forMachine _dtal TraceGovernorWakeup =
+    mconcat [ "kind" .= String "GovernorWakeup"
+             ]
+  forMachine _dtal (TraceChurnWait dt) =
+    mconcat [ "kind" .= String "ChurnWait"
+             , "diffTime" .= toJSON dt
+             ]
+  forMachine _dtal (TraceChurnMode c) =
+    mconcat [ "kind" .= String "ChurnMode"
+             , "event" .= show c ]
+  forHuman = pack . show
 
--- instance (ToJSONKey ntnAddr, ToJSONKey RelayAccessPoint, Show ntnAddr, Show exception) =>
---     LogFormatting (TraceLocalRootPeers ntnAddr exception) where
---   forMachine _dtal (TraceLocalRootDomains groups) =
---     mconcat [ "kind" .= String "LocalRootDomains"
---              , "localRootDomains" .= toJSON groups
---              ]
---   forMachine _dtal (TraceLocalRootWaiting d dt) =
---     mconcat [ "kind" .= String "LocalRootWaiting"
---              , "domainAddress" .= toJSON d
---              , "diffTime" .= show dt
---              ]
---   forMachine _dtal (TraceLocalRootResult d res) =
---     mconcat [ "kind" .= String "LocalRootResult"
---              , "domainAddress" .= toJSON d
---              , "result" .= toJSONList res
---              ]
---   forMachine _dtal (TraceLocalRootGroups groups) =
---     mconcat [ "kind" .= String "LocalRootGroups"
---              , "localRootGroups" .= toJSON groups
---              ]
---   forMachine _dtal (TraceLocalRootFailure d exception) =
---     mconcat [ "kind" .= String "LocalRootFailure"
---              , "domainAddress" .= toJSON d
---              , "reason" .= show exception
---              ]
---   forMachine _dtal (TraceLocalRootError d exception) =
---     mconcat [ "kind" .= String "LocalRootError"
---              , "domainAddress" .= toJSON d
---              , "reason" .= show exception
---              ]
---   forHuman = pack . show
+instance MetaTrace (TracePeerSelection SockAddr) where
+    namespaceFor TraceLocalRootPeersChanged {} =
+      Namespace [] ["LocalRootPeersChanged"]
+    namespaceFor TraceTargetsChanged {}        =
+      Namespace [] ["TargetsChanged"]
+    namespaceFor TracePublicRootsRequest {}    =
+      Namespace [] ["PublicRootsRequest"]
+    namespaceFor TracePublicRootsResults {}    =
+      Namespace [] ["PublicRootsResults"]
+    namespaceFor TracePublicRootsFailure {}    =
+      Namespace [] ["PublicRootsFailure"]
+    namespaceFor TraceGossipRequests {}        =
+      Namespace [] ["GossipRequests"]
+    namespaceFor TraceGossipResults {}         =
+      Namespace [] ["GossipResults"]
+    namespaceFor TraceForgetColdPeers {}       =
+      Namespace [] ["ForgetColdPeers"]
+    namespaceFor TracePromoteColdPeers {}      =
+      Namespace [] ["PromoteColdPeers"]
+    namespaceFor TracePromoteColdLocalPeers {} =
+      Namespace [] ["PromoteColdLocalPeers"]
+    namespaceFor TracePromoteColdFailed {}     =
+      Namespace [] ["PromoteColdFailed"]
+    namespaceFor TracePromoteColdDone {}       =
+      Namespace [] ["PromoteColdDone"]
+    namespaceFor TracePromoteWarmPeers {}      =
+      Namespace [] ["PromoteWarmPeers"]
+    namespaceFor TracePromoteWarmLocalPeers {} =
+      Namespace [] ["PromoteWarmLocalPeers"]
+    namespaceFor TracePromoteWarmFailed {}     =
+      Namespace [] ["PromoteWarmFailed"]
+    namespaceFor TracePromoteWarmDone {}       =
+      Namespace [] ["PromoteWarmDone"]
+    namespaceFor TracePromoteWarmAborted {}    =
+      Namespace [] ["PromoteWarmAborted"]
+    namespaceFor TraceDemoteWarmPeers {}       =
+      Namespace [] ["DemoteWarmPeers"]
+    namespaceFor TraceDemoteWarmFailed {}      =
+      Namespace [] ["DemoteWarmFailed"]
+    namespaceFor TraceDemoteWarmDone {}        =
+      Namespace [] ["DemoteWarmDone"]
+    namespaceFor TraceDemoteHotPeers {}        =
+      Namespace [] ["DemoteHotPeers"]
+    namespaceFor TraceDemoteLocalHotPeers {}   =
+      Namespace [] ["DemoteLocalHotPeers"]
+    namespaceFor TraceDemoteHotFailed {}       =
+      Namespace [] ["DemoteHotFailed"]
+    namespaceFor TraceDemoteHotDone {}         =
+      Namespace [] ["DemoteHotDone"]
+    namespaceFor TraceDemoteAsynchronous {}    =
+      Namespace [] ["DemoteAsynchronous"]
+    namespaceFor TraceDemoteLocalAsynchronous {} =
+      Namespace [] ["TraceDemoteLocalAsynchronous"]
+    namespaceFor TraceGovernorWakeup {}        =
+      Namespace [] ["GovernorWakeup"]
+    namespaceFor TraceChurnWait {}             =
+      Namespace [] ["ChurnWait"]
+    namespaceFor TraceChurnMode {}             =
+      Namespace [] ["ChurnMode"]
 
--- docLocalRootPeers :: Documented (TraceLocalRootPeers ntnAddr resolverError)
--- docLocalRootPeers =  addDocumentedNamespace  [] docLocalRootPeers'
+    severityFor (Namespace [] ["LocalRootPeersChanged"]) _ = Just Notice
+    severityFor (Namespace [] ["TargetsChanged"]) _ = Just Notice
+    severityFor (Namespace [] ["PublicRootsRequest"]) _ = Just Info
+    severityFor (Namespace [] ["PublicRootsResults"]) _ = Just Info
+    severityFor (Namespace [] ["PublicRootsFailure"]) _ = Just Error
+    severityFor (Namespace [] ["GossipRequests"]) _ = Just Debug
+    severityFor (Namespace [] ["GossipResults"]) _ = Just Debug
+    severityFor (Namespace [] ["ForgetColdPeers"]) _ = Just Info
+    severityFor (Namespace [] ["PromoteColdPeers"]) _ = Just Info
+    severityFor (Namespace [] ["PromoteColdLocalPeers"]) _ = Just Info
+    severityFor (Namespace [] ["PromoteColdFailed"]) _ = Just Info
+    severityFor (Namespace [] ["PromoteColdDone"]) _ = Just Info
+    severityFor (Namespace [] ["PromoteWarmPeers"]) _ = Just Info
+    severityFor (Namespace [] ["PromoteWarmLocalPeers"]) _ = Just Info
+    severityFor (Namespace [] ["PromoteWarmFailed"]) _ = Just Info
+    severityFor (Namespace [] ["PromoteWarmDone"]) _ = Just Info
+    severityFor (Namespace [] ["PromoteWarmAborted"]) _ = Just Info
+    severityFor (Namespace [] ["DemoteWarmPeers"]) _ = Just Info
+    severityFor (Namespace [] ["DemoteWarmFailed"]) _ = Just Info
+    severityFor (Namespace [] ["DemoteWarmDone"]) _ = Just Info
+    severityFor (Namespace [] ["DemoteHotPeers"]) _ = Just Info
+    severityFor (Namespace [] ["DemoteLocalHotPeers"]) _ = Just Info
+    severityFor (Namespace [] ["DemoteHotFailed"]) _ = Just Info
+    severityFor (Namespace [] ["DemoteHotDone"]) _ = Just Info
+    severityFor (Namespace [] ["DemoteAsynchronous"]) _ = Just Info
+    severityFor (Namespace [] ["DemoteLocalAsynchronous"]) _ = Just Warning
+    severityFor (Namespace [] ["GovernorWakeup"]) _ = Just Info
+    severityFor (Namespace [] ["ChurnWait"]) _ = Just Info
+    severityFor (Namespace [] ["ChurnMode"]) _ = Just Info
+    severityFor _ _ = Nothing
 
--- docLocalRootPeers' :: Documented (TraceLocalRootPeers ntnAddr resolverError)
--- docLocalRootPeers' = Documented [
---     DocMsg
---       ["LocalRootDomains"]
---       []
---       ""
---   , DocMsg
---       ["LocalRootWaiting"]
---       []
---       ""
---   , DocMsg
---       ["LocalRootResult"]
---       []
---       ""
---   , DocMsg
---       ["LocalRootGroups"]
---       []
---       ""
---   , DocMsg
---       ["LocalRootFailure"]
---       []
---       ""
---   , DocMsg
---       ["LocalRootError"]
---       []
---       ""
---   ]
+    documentFor (Namespace [] ["LocalRootPeersChanged"]) = Just  ""
+    documentFor (Namespace [] ["TargetsChanged"]) = Just  ""
+    documentFor (Namespace [] ["PublicRootsRequest"]) = Just  ""
+    documentFor (Namespace [] ["PublicRootsResults"]) = Just  ""
+    documentFor (Namespace [] ["PublicRootsFailure"]) = Just  ""
+    documentFor (Namespace [] ["GossipRequests"]) = Just
+      "target known peers, actual known peers, peers available for gossip,\
+      \ peers selected for gossip"
+    documentFor (Namespace [] ["GossipResults"]) = Just  ""
+    documentFor (Namespace [] ["ForgetColdPeers"]) = Just
+      "target known peers, actual known peers, selected peers"
+    documentFor (Namespace [] ["PromoteColdPeers"]) = Just
+      "target established, actual established, selected peers"
+    documentFor (Namespace [] ["PromoteColdLocalPeers"]) = Just
+      "target local established, actual local established, selected peers"
+    documentFor (Namespace [] ["PromoteColdFailed"]) = Just
+      "target established, actual established, peer, delay until next\
+      \ promotion, reason"
+    documentFor (Namespace [] ["PromoteColdDone"]) = Just
+      "target active, actual active, selected peers"
+    documentFor (Namespace [] ["PromoteWarmPeers"]) = Just
+      "target active, actual active, selected peers"
+    documentFor (Namespace [] ["PromoteWarmLocalPeers"]) = Just
+      "local per-group (target active, actual active), selected peers"
+    documentFor (Namespace [] ["PromoteWarmFailed"]) = Just
+      "target active, actual active, peer, reason"
+    documentFor (Namespace [] ["PromoteWarmDone"]) = Just
+      "target active, actual active, peer"
+    documentFor (Namespace [] ["PromoteWarmAborted"]) = Just ""
+    documentFor (Namespace [] ["DemoteWarmPeers"]) = Just
+      "target established, actual established, selected peers"
+    documentFor (Namespace [] ["DemoteWarmFailed"]) = Just
+      "target established, actual established, peer, reason"
+    documentFor (Namespace [] ["DemoteWarmDone"]) = Just
+      "target established, actual established, peer"
+    documentFor (Namespace [] ["DemoteHotPeers"]) = Just
+      "target active, actual active, selected peers"
+    documentFor (Namespace [] ["DemoteLocalHotPeers"]) = Just
+      "local per-group (target active, actual active), selected peers"
+    documentFor (Namespace [] ["DemoteHotFailed"]) = Just
+      "target active, actual active, peer, reason"
+    documentFor (Namespace [] ["DemoteHotDone"]) = Just
+      "target active, actual active, peer"
+    documentFor (Namespace [] ["DemoteAsynchronous"]) = Just  ""
+    documentFor (Namespace [] ["TraceDemoteLocalAsynchronous"]) = Just  ""
+    documentFor (Namespace [] ["GovernorWakeup"]) = Just  ""
+    documentFor (Namespace [] ["ChurnWait"]) = Just  ""
+    documentFor (Namespace [] ["ChurnMode"]) = Just  ""
+    documentFor _ = Nothing
 
--- --------------------------------------------------------------------------------
--- -- PublicRootPeers Tracer
--- --------------------------------------------------------------------------------
+    allNamespaces = [
+        Namespace [] ["LocalRootPeersChanged"]
+      , Namespace [] ["TargetsChanged"]
+      , Namespace [] ["PublicRootsRequest"]
+      , Namespace [] ["PublicRootsResults"]
+      , Namespace [] ["PublicRootsFailure"]
+      , Namespace [] ["GossipRequests"]
+      , Namespace [] ["GossipResults"]
+      , Namespace [] ["ForgetColdPeers"]
+      , Namespace [] ["PromoteColdPeers"]
+      , Namespace [] ["PromoteColdLocalPeers"]
+      , Namespace [] ["PromoteColdFailed"]
+      , Namespace [] ["PromoteColdDone"]
+      , Namespace [] ["PromoteWarmPeers"]
+      , Namespace [] ["PromoteWarmLocalPeers"]
+      , Namespace [] ["PromoteWarmFailed"]
+      , Namespace [] ["PromoteWarmDone"]
+      , Namespace [] ["PromoteWarmAborted"]
+      , Namespace [] ["DemoteWarmPeers"]
+      , Namespace [] ["DemoteWarmFailed"]
+      , Namespace [] ["DemoteWarmDone"]
+      , Namespace [] ["DemoteHotPeers"]
+      , Namespace [] ["DemoteLocalHotPeers"]
+      , Namespace [] ["DemoteHotFailed"]
+      , Namespace [] ["DemoteHotDone"]
+      , Namespace [] ["DemoteAsynchronous"]
+      , Namespace [] ["TraceDemoteLocalAsynchronous"]
+      , Namespace [] ["GovernorWakeup"]
+      , Namespace [] ["ChurnWait"]
+      , Namespace [] ["ChurnMode"]
+      ]
 
--- namesForPublicRootPeers :: TracePublicRootPeers -> [Text]
--- namesForPublicRootPeers TracePublicRootRelayAccessPoint {} = ["PublicRootRelayAccessPoint"]
--- namesForPublicRootPeers TracePublicRootDomains {} = ["PublicRootDomains"]
--- namesForPublicRootPeers TracePublicRootResult {}  = ["PublicRootResult"]
--- namesForPublicRootPeers TracePublicRootFailure {}  = ["PublicRootFailure"]
+--------------------------------------------------------------------------------
+-- DebugPeerSelection Tracer
+--------------------------------------------------------------------------------
 
--- severityPublicRootPeers :: TracePublicRootPeers -> SeverityS
--- severityPublicRootPeers _ = Info
+instance LogFormatting (DebugPeerSelection SockAddr) where
+  forMachine DNormal (TraceGovernorState blockedAt wakeupAfter
+                   PeerSelectionState { targets, knownPeers, establishedPeers, activePeers }) =
+    mconcat [ "kind" .= String "DebugPeerSelection"
+             , "blockedAt" .= String (pack $ show blockedAt)
+             , "wakeupAfter" .= String (pack $ show wakeupAfter)
+             , "targets" .= peerSelectionTargetsToObject targets
+             , "numberOfPeers" .=
+                 Object (mconcat [ "known" .= KnownPeers.size knownPeers
+                                  , "established" .= EstablishedPeers.size establishedPeers
+                                  , "active" .= Set.size activePeers
+                                  ])
+             ]
+  forMachine _ (TraceGovernorState blockedAt wakeupAfter ev) =
+    mconcat [ "kind" .= String "DebugPeerSelection"
+             , "blockedAt" .= String (pack $ show blockedAt)
+             , "wakeupAfter" .= String (pack $ show wakeupAfter)
+             , "peerSelectionState" .= String (pack $ show ev)
+             ]
+  forHuman = pack . show
 
--- instance LogFormatting TracePublicRootPeers where
---   forMachine _dtal (TracePublicRootRelayAccessPoint relays) =
---     mconcat [ "kind" .= String "PublicRootRelayAddresses"
---              , "relayAddresses" .= toJSONList relays
---              ]
---   forMachine _dtal (TracePublicRootDomains domains) =
---     mconcat [ "kind" .= String "PublicRootDomains"
---              , "domainAddresses" .= toJSONList domains
---              ]
---   forMachine _dtal (TracePublicRootResult b res) =
---     mconcat [ "kind" .= String "PublicRootResult"
---              , "domain" .= show b
---              , "result" .= toJSONList res
---              ]
---   forMachine _dtal (TracePublicRootFailure b d) =
---     mconcat [ "kind" .= String "PublicRootFailure"
---              , "domain" .= show b
---              , "reason" .= show d
---              ]
---   forHuman = pack . show
+peerSelectionTargetsToObject :: PeerSelectionTargets -> Value
+peerSelectionTargetsToObject
+  PeerSelectionTargets { targetNumberOfRootPeers,
+                         targetNumberOfKnownPeers,
+                         targetNumberOfEstablishedPeers,
+                         targetNumberOfActivePeers } =
+    Object $
+      mconcat [ "roots" .= targetNumberOfRootPeers
+               , "knownPeers" .= targetNumberOfKnownPeers
+               , "established" .= targetNumberOfEstablishedPeers
+               , "active" .= targetNumberOfActivePeers
+               ]
 
+instance MetaTrace (DebugPeerSelection SockAddr) where
+    namespaceFor TraceGovernorState {} = Namespace [] ["GovernorState"]
 
--- docPublicRootPeers :: Documented TracePublicRootPeers
--- docPublicRootPeers = Documented [
---     DocMsg
---       ["PublicRootRelayAccessPoint"]
---       []
---       ""
---   , DocMsg
---       ["PublicRootDomains"]
---       []
---       ""
---   , DocMsg
---       ["PublicRootResult"]
---       []
---       ""
---   , DocMsg
---       ["PublicRootFailure"]
---       []
---       ""
---   ]
+    severityFor (Namespace _ ["GovernorState"]) _ = Just Debug
+    severityFor _ _ = Nothing
 
--- --------------------------------------------------------------------------------
--- -- PeerSelection Tracer
--- --------------------------------------------------------------------------------
+    documentFor (Namespace _ ["GovernorState"]) = Just ""
+    documentFor _ = Nothing
 
--- namesForPeerSelection :: TracePeerSelection peeraddr -> [Text]
--- namesForPeerSelection TraceLocalRootPeersChanged {} = ["LocalRootPeersChanged"]
--- namesForPeerSelection TraceTargetsChanged {}        = ["TargetsChanged"]
--- namesForPeerSelection TracePublicRootsRequest {}    = ["PublicRootsRequest"]
--- namesForPeerSelection TracePublicRootsResults {}    = ["PublicRootsResults"]
--- namesForPeerSelection TracePublicRootsFailure {}    = ["PublicRootsFailure"]
--- namesForPeerSelection TraceGossipRequests {}        = ["GossipRequests"]
--- namesForPeerSelection TraceGossipResults {}         = ["GossipResults"]
--- namesForPeerSelection TraceForgetColdPeers {}       = ["ForgetColdPeers"]
--- namesForPeerSelection TracePromoteColdPeers {}      = ["PromoteColdPeers"]
--- namesForPeerSelection TracePromoteColdLocalPeers {} = ["PromoteColdLocalPeers"]
--- namesForPeerSelection TracePromoteColdFailed {}     = ["PromoteColdFailed"]
--- namesForPeerSelection TracePromoteColdDone {}       = ["PromoteColdDone"]
--- namesForPeerSelection TracePromoteWarmPeers {}      = ["PromoteWarmPeers"]
--- namesForPeerSelection TracePromoteWarmLocalPeers {} = ["PromoteWarmLocalPeers"]
--- namesForPeerSelection TracePromoteWarmFailed {}     = ["PromoteWarmFailed"]
--- namesForPeerSelection TracePromoteWarmDone {}       = ["PromoteWarmDone"]
--- namesForPeerSelection TracePromoteWarmAborted {}    = ["PromoteWarmAborted"]
--- namesForPeerSelection TraceDemoteWarmPeers {}       = ["DemoteWarmPeers"]
--- namesForPeerSelection TraceDemoteWarmFailed {}      = ["DemoteWarmFailed"]
--- namesForPeerSelection TraceDemoteWarmDone {}        = ["DemoteWarmDone"]
--- namesForPeerSelection TraceDemoteHotPeers {}        = ["DemoteHotPeers"]
--- namesForPeerSelection TraceDemoteLocalHotPeers {}   = ["DemoteLocalHotPeers"]
--- namesForPeerSelection TraceDemoteHotFailed {}       = ["DemoteHotFailed"]
--- namesForPeerSelection TraceDemoteHotDone {}         = ["DemoteHotDone"]
--- namesForPeerSelection TraceDemoteAsynchronous {}    = ["DemoteAsynchronous"]
--- namesForPeerSelection TraceDemoteLocalAsynchronous {}
---                                                     = ["DemoteAsynchronous"]
--- namesForPeerSelection TraceGovernorWakeup {}        = ["GovernorWakeup"]
--- namesForPeerSelection TraceChurnWait {}             = ["ChurnWait"]
--- namesForPeerSelection TraceChurnMode {}             = ["ChurnMode"]
+    allNamespaces = [
+      Namespace [] ["GovernorState"]
+      ]
 
 
--- severityPeerSelection :: TracePeerSelection peeraddr -> SeverityS
--- severityPeerSelection TraceLocalRootPeersChanged {} = Notice
--- severityPeerSelection TraceTargetsChanged        {} = Notice
--- severityPeerSelection TracePublicRootsRequest    {} = Info
--- severityPeerSelection TracePublicRootsResults    {} = Info
--- severityPeerSelection TracePublicRootsFailure    {} = Error
--- severityPeerSelection TraceGossipRequests        {} = Debug
--- severityPeerSelection TraceGossipResults         {} = Debug
--- severityPeerSelection TraceForgetColdPeers       {} = Info
--- severityPeerSelection TracePromoteColdPeers      {} = Info
--- severityPeerSelection TracePromoteColdLocalPeers {} = Info
--- severityPeerSelection TracePromoteColdFailed     {} = Info
--- severityPeerSelection TracePromoteColdDone       {} = Info
--- severityPeerSelection TracePromoteWarmPeers      {} = Info
--- severityPeerSelection TracePromoteWarmLocalPeers {} = Info
--- severityPeerSelection TracePromoteWarmFailed     {} = Info
--- severityPeerSelection TracePromoteWarmDone       {} = Info
--- severityPeerSelection TracePromoteWarmAborted    {} = Info
--- severityPeerSelection TraceDemoteWarmPeers       {} = Info
--- severityPeerSelection TraceDemoteWarmFailed      {} = Info
--- severityPeerSelection TraceDemoteWarmDone        {} = Info
--- severityPeerSelection TraceDemoteHotPeers        {} = Info
--- severityPeerSelection TraceDemoteLocalHotPeers   {} = Info
--- severityPeerSelection TraceDemoteHotFailed       {} = Info
--- severityPeerSelection TraceDemoteHotDone         {} = Info
--- severityPeerSelection TraceDemoteAsynchronous    {} = Info
--- severityPeerSelection TraceDemoteLocalAsynchronous {} = Warning
--- severityPeerSelection TraceGovernorWakeup        {} = Info
--- severityPeerSelection TraceChurnWait             {} = Info
--- severityPeerSelection TraceChurnMode             {} = Info
+--------------------------------------------------------------------------------
+-- PeerSelectionCounters
+--------------------------------------------------------------------------------
 
--- instance LogFormatting (TracePeerSelection SockAddr) where
---   forMachine _dtal (TraceLocalRootPeersChanged lrp lrp') =
---     mconcat [ "kind" .= String "LocalRootPeersChanged"
---              , "previous" .= toJSON lrp
---              , "current" .= toJSON lrp'
---              ]
---   forMachine _dtal (TraceTargetsChanged pst pst') =
---     mconcat [ "kind" .= String "TargetsChanged"
---              , "previous" .= toJSON pst
---              , "current" .= toJSON pst'
---              ]
---   forMachine _dtal (TracePublicRootsRequest tRootPeers nRootPeers) =
---     mconcat [ "kind" .= String "PublicRootsRequest"
---              , "targetNumberOfRootPeers" .= tRootPeers
---              , "numberOfRootPeers" .= nRootPeers
---              ]
---   forMachine _dtal (TracePublicRootsResults res group dt) =
---     mconcat [ "kind" .= String "PublicRootsResults"
---              , "result" .= toJSONList (toList res)
---              , "group" .= group
---              , "diffTime" .= dt
---              ]
---   forMachine _dtal (TracePublicRootsFailure err group dt) =
---     mconcat [ "kind" .= String "PublicRootsFailure"
---              , "reason" .= show err
---              , "group" .= group
---              , "diffTime" .= dt
---              ]
---   forMachine _dtal (TraceGossipRequests targetKnown actualKnown aps sps) =
---     mconcat [ "kind" .= String "GossipRequests"
---              , "targetKnown" .= targetKnown
---              , "actualKnown" .= actualKnown
---              , "availablePeers" .= toJSONList (toList aps)
---              , "selectedPeers" .= toJSONList (toList sps)
---              ]
---   forMachine _dtal (TraceGossipResults res) =
---     mconcat [ "kind" .= String "GossipResults"
---              , "result" .= toJSONList (map ( bimap show id <$> ) res)
---              ]
---   forMachine _dtal (TraceForgetColdPeers targetKnown actualKnown sp) =
---     mconcat [ "kind" .= String "ForgeColdPeers"
---              , "targetKnown" .= targetKnown
---              , "actualKnown" .= actualKnown
---              , "selectedPeers" .= toJSONList (toList sp)
---              ]
---   forMachine _dtal (TracePromoteColdPeers targetKnown actualKnown sp) =
---     mconcat [ "kind" .= String "PromoteColdPeers"
---              , "targetEstablished" .= targetKnown
---              , "actualEstablished" .= actualKnown
---              , "selectedPeers" .= toJSONList (toList sp)
---              ]
---   forMachine _dtal (TracePromoteColdLocalPeers tLocalEst aLocalEst sp) =
---     mconcat [ "kind" .= String "PromoteColdLocalPeers"
---              , "targetLocalEstablished" .= tLocalEst
---              , "actualLocalEstablished" .= aLocalEst
---              , "selectedPeers" .= toJSONList (toList sp)
---              ]
---   forMachine _dtal (TracePromoteColdFailed tEst aEst p d err) =
---     mconcat [ "kind" .= String "PromoteColdFailed"
---              , "targetEstablished" .= tEst
---              , "actualEstablished" .= aEst
---              , "peer" .= toJSON p
---              , "delay" .= toJSON d
---              , "reason" .= show err
---              ]
---   forMachine _dtal (TracePromoteColdDone tEst aEst p) =
---     mconcat [ "kind" .= String "PromoteColdDone"
---              , "targetEstablished" .= tEst
---              , "actualEstablished" .= aEst
---              , "peer" .= toJSON p
---              ]
---   forMachine _dtal (TracePromoteWarmPeers tActive aActive sp) =
---     mconcat [ "kind" .= String "PromoteWarmPeers"
---              , "targetActive" .= tActive
---              , "actualActive" .= aActive
---              , "selectedPeers" .= toJSONList (toList sp)
---              ]
---   forMachine _dtal (TracePromoteWarmLocalPeers taa sp) =
---     mconcat [ "kind" .= String "PromoteWarmLocalPeers"
---              , "targetActualActive" .= toJSONList taa
---              , "selectedPeers" .= toJSONList (toList sp)
---              ]
---   forMachine _dtal (TracePromoteWarmFailed tActive aActive p err) =
---     mconcat [ "kind" .= String "PromoteWarmFailed"
---              , "targetActive" .= tActive
---              , "actualActive" .= aActive
---              , "peer" .= toJSON p
---              , "reason" .= show err
---              ]
---   forMachine _dtal (TracePromoteWarmDone tActive aActive p) =
---     mconcat [ "kind" .= String "PromoteWarmDone"
---              , "targetActive" .= tActive
---              , "actualActive" .= aActive
---              , "peer" .= toJSON p
---              ]
---   forMachine _dtal (TracePromoteWarmAborted tActive aActive p) =
---     mconcat [ "kind" .= String "PromoteWarmAborted"
---              , "targetActive" .= tActive
---              , "actualActive" .= aActive
---              , "peer" .= toJSON p
---              ]
---   forMachine _dtal (TraceDemoteWarmPeers tEst aEst sp) =
---     mconcat [ "kind" .= String "DemoteWarmPeers"
---              , "targetEstablished" .= tEst
---              , "actualEstablished" .= aEst
---              , "selectedPeers" .= toJSONList (toList sp)
---              ]
---   forMachine _dtal (TraceDemoteWarmFailed tEst aEst p err) =
---     mconcat [ "kind" .= String "DemoteWarmFailed"
---              , "targetEstablished" .= tEst
---              , "actualEstablished" .= aEst
---              , "peer" .= toJSON p
---              , "reason" .= show err
---              ]
---   forMachine _dtal (TraceDemoteWarmDone tEst aEst p) =
---     mconcat [ "kind" .= String "DemoteWarmDone"
---              , "targetEstablished" .= tEst
---              , "actualEstablished" .= aEst
---              , "peer" .= toJSON p
---              ]
---   forMachine _dtal (TraceDemoteHotPeers tActive aActive sp) =
---     mconcat [ "kind" .= String "DemoteHotPeers"
---              , "targetActive" .= tActive
---              , "actualActive" .= aActive
---              , "selectedPeers" .= toJSONList (toList sp)
---              ]
---   forMachine _dtal (TraceDemoteLocalHotPeers taa sp) =
---     mconcat [ "kind" .= String "DemoteLocalHotPeers"
---              , "targetActualActive" .= toJSONList taa
---              , "selectedPeers" .= toJSONList (toList sp)
---              ]
---   forMachine _dtal (TraceDemoteHotFailed tActive aActive p err) =
---     mconcat [ "kind" .= String "DemoteHotFailed"
---              , "targetActive" .= tActive
---              , "actualActive" .= aActive
---              , "peer" .= toJSON p
---              , "reason" .= show err
---              ]
---   forMachine _dtal (TraceDemoteHotDone tActive aActive p) =
---     mconcat [ "kind" .= String "DemoteHotDone"
---              , "targetActive" .= tActive
---              , "actualActive" .= aActive
---              , "peer" .= toJSON p
---              ]
---   forMachine _dtal (TraceDemoteAsynchronous msp) =
---     mconcat [ "kind" .= String "DemoteAsynchronous"
---              , "state" .= toJSON msp
---              ]
---   forMachine _dtal (TraceDemoteLocalAsynchronous msp) =
---     mconcat [ "kind" .= String "DemoteLocalAsynchronous"
---              , "state" .= toJSON msp
---              ]
---   forMachine _dtal TraceGovernorWakeup =
---     mconcat [ "kind" .= String "GovernorWakeup"
---              ]
---   forMachine _dtal (TraceChurnWait dt) =
---     mconcat [ "kind" .= String "ChurnWait"
---              , "diffTime" .= toJSON dt
---              ]
---   forMachine _dtal (TraceChurnMode c) =
---     mconcat [ "kind" .= String "ChurnMode"
---              , "event" .= show c ]
---   forHuman = pack . show
+instance LogFormatting PeerSelectionCounters where
+  forMachine _dtal ev =
+    mconcat [ "kind" .= String "PeerSelectionCounters"
+             , "coldPeers" .= coldPeers ev
+             , "warmPeers" .= warmPeers ev
+             , "hotPeers" .= hotPeers ev
+             ]
+  forHuman = pack . show
+  asMetrics PeerSelectionCounters {..} =
+    [ IntM
+        "Net.PeerSelection.Cold"
+        (fromIntegral coldPeers)
+    , IntM
+        "Net.PeerSelection.Warm"
+        (fromIntegral warmPeers)
+    , IntM
+        "Net.PeerSelection.Hot"
+        (fromIntegral hotPeers)
+      ]
 
--- docPeerSelection ::  Documented (TracePeerSelection SockAddr)
--- docPeerSelection =  addDocumentedNamespace  [] docPeerSelection'
 
--- docPeerSelection' :: Documented (TracePeerSelection SockAddr)
--- docPeerSelection' = Documented [
---     DocMsg
---       ["LocalRootPeersChanged"]
---       []
---       ""
---   , DocMsg
---       ["TargetsChanged"]
---       []
---       ""
---   , DocMsg
---       ["PublicRootsRequest"]
---       []
---       ""
---   , DocMsg
---       ["PublicRootsResults"]
---       []
---       ""
---   , DocMsg
---       ["PublicRootsFailure"]
---       []
---       ""
---   , DocMsg
---       ["GossipRequests"]
---       []
---       "target known peers, actual known peers, peers available for gossip,\
---       \ peers selected for gossip"
---   , DocMsg
---       ["GossipResults"]
---       []
---       ""
---   , DocMsg
---       ["ForgetColdPeers"]
---       []
---       "target known peers, actual known peers, selected peers"
---   , DocMsg
---       ["PromoteColdPeers"]
---       []
---       "target established, actual established, selected peers"
---   , DocMsg
---       ["PromoteColdLocalPeers"]
---       []
---       "target local established, actual local established, selected peers"
---   , DocMsg
---       ["PromoteColdFailed"]
---       []
---       "target established, actual established, peer, delay until next\
---       \ promotion, reason"
---   , DocMsg
---       ["PromoteColdDone"]
---       []
---       "target active, actual active, selected peers"
---   , DocMsg
---       ["PromoteWarmPeers"]
---       []
---       "target active, actual active, selected peers"
---   , DocMsg
---       ["PromoteWarmLocalPeers"]
---       []
---       "local per-group (target active, actual active), selected peers"
---   , DocMsg
---       ["PromoteWarmFailed"]
---       []
---       "target active, actual active, peer, reason"
---   , DocMsg
---       ["PromoteWarmDone"]
---       []
---       "target active, actual active, peer"
---   , DocMsg
---       ["PromoteWarmAborted"]
---       []
---       ""
---   , DocMsg
---       ["DemoteWarmPeers"]
---       []
---       "target established, actual established, selected peers"
---   , DocMsg
---       ["DemoteWarmFailed"]
---       []
---       "target established, actual established, peer, reason"
---   , DocMsg
---       ["DemoteWarmDone"]
---       []
---       "target established, actual established, peer"
---   , DocMsg
---       ["DemoteHotPeers"]
---       []
---       "target active, actual active, selected peers"
---   , DocMsg
---       ["DemoteLocalHotPeers"]
---       []
---       "local per-group (target active, actual active), selected peers"
---   , DocMsg
---       ["DemoteHotFailed"]
---       []
---       "target active, actual active, peer, reason"
---   , DocMsg
---       ["DemoteHotDone"]
---       []
---       "target active, actual active, peer"
---   , DocMsg
---       ["DemoteAsynchronous"]
---       []
---       ""
---   , DocMsg
---       ["GovernorWakeup"]
---       []
---       ""
---   , DocMsg
---       ["ChurnWait"]
---       []
---       ""
---   , DocMsg
---       ["ChurnMode"]
---       []
---       ""
---   ]
-
--- peerSelectionTargetsToObject :: PeerSelectionTargets -> Value
--- peerSelectionTargetsToObject
---   PeerSelectionTargets { targetNumberOfRootPeers,
---                          targetNumberOfKnownPeers,
---                          targetNumberOfEstablishedPeers,
---                          targetNumberOfActivePeers } =
---     Object $
---       mconcat [ "roots" .= targetNumberOfRootPeers
---                , "knownPeers" .= targetNumberOfKnownPeers
---                , "established" .= targetNumberOfEstablishedPeers
---                , "active" .= targetNumberOfActivePeers
---                ]
-
--- --------------------------------------------------------------------------------
--- -- DebugPeerSelection Tracer
--- --------------------------------------------------------------------------------
-
--- namesForDebugPeerSelection :: DebugPeerSelection SockAddr -> [Text]
--- namesForDebugPeerSelection _ = ["GovernorState"]
-
--- severityDebugPeerSelection :: DebugPeerSelection SockAddr -> SeverityS
--- severityDebugPeerSelection _ = Debug
-
--- instance LogFormatting (DebugPeerSelection SockAddr) where
---   forMachine DNormal (TraceGovernorState blockedAt wakeupAfter
---                    PeerSelectionState { targets, knownPeers, establishedPeers, activePeers }) =
---     mconcat [ "kind" .= String "DebugPeerSelection"
---              , "blockedAt" .= String (pack $ show blockedAt)
---              , "wakeupAfter" .= String (pack $ show wakeupAfter)
---              , "targets" .= peerSelectionTargetsToObject targets
---              , "numberOfPeers" .=
---                  Object (mconcat [ "known" .= KnownPeers.size knownPeers
---                                   , "established" .= EstablishedPeers.size establishedPeers
---                                   , "active" .= Set.size activePeers
---                                   ])
---              ]
---   forMachine _ (TraceGovernorState blockedAt wakeupAfter ev) =
---     mconcat [ "kind" .= String "DebugPeerSelection"
---              , "blockedAt" .= String (pack $ show blockedAt)
---              , "wakeupAfter" .= String (pack $ show wakeupAfter)
---              , "peerSelectionState" .= String (pack $ show ev)
---              ]
---   forHuman = pack . show
-
--- docDebugPeerSelection :: Documented (DebugPeerSelection SockAddr)
--- docDebugPeerSelection = Documented
---   [  DocMsg
---       ["GovernorState"]
---       []
---       ""
---   ]
 
 -- namesForPeerSelectionCounters :: PeerSelectionCounters -> [Text]
 -- namesForPeerSelectionCounters _ = []
@@ -639,25 +603,6 @@ module Cardano.Node.Tracing.Tracers.P2P () where
 -- severityPeerSelectionCounters :: PeerSelectionCounters -> SeverityS
 -- severityPeerSelectionCounters _ = Info
 
--- instance LogFormatting PeerSelectionCounters where
---   forMachine _dtal ev =
---     mconcat [ "kind" .= String "PeerSelectionCounters"
---              , "coldPeers" .= coldPeers ev
---              , "warmPeers" .= warmPeers ev
---              , "hotPeers" .= hotPeers ev
---              ]
---   forHuman = pack . show
---   asMetrics PeerSelectionCounters {..} =
---     [ IntM
---         "Net.PeerSelection.Cold"
---         (fromIntegral coldPeers)
---     , IntM
---         "Net.PeerSelection.Warm"
---         (fromIntegral warmPeers)
---     , IntM
---         "Net.PeerSelection.Hot"
---         (fromIntegral hotPeers)
---       ]
 
 -- docPeerSelectionCounters :: Documented PeerSelectionCounters
 -- docPeerSelectionCounters = Documented
