@@ -83,15 +83,9 @@ in project.shellFor {
   # (the default is *local* packages which includes them, we select *project* pacakges which doesn't)
   packages = ps: builtins.attrValues (haskellLib.selectProjectPackages ps);
 
-  tools = {
-    haskell-language-server = {
-      version = "latest";
-      inherit (project) index-state;
-    };
-  };
-
   # These programs will be available inside the nix-shell.
   nativeBuildInputs = with pkgs; with haskellPackages; with cardanoNodePackages; [
+    haskell-language-server
     cardano-ping
     db-analyser
     pkgs.graphviz

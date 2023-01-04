@@ -25,7 +25,9 @@ final: prev: with final; {
   };
 
   haskell-language-server = haskell-nix.tool compiler-nix-name "haskell-language-server" {
-    version = "latest";
+    # XXX waiting for https://github.com/haskell/haskell-language-server/issues/3427
+    # before switching back to latest:
+    version = "1.8.0.0";
     inherit (cardanoNodeProject) index-state;
   };
 
