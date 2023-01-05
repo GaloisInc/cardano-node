@@ -14,14 +14,20 @@
 
 let
 
-  # Container defaults: See ./oci-images.nix for further details.
-  ## The template stanza can only generate files inside /local (NOMAD_TASK_DIR)
+  # Container defaults:
+  ## Stored on the job's "meta" stanza and intended to be overrided with `jq`.
+  ## See ./oci-images.nix for further details.
+  #
+  # The template stanza can only generate files inside /local (NOMAD_TASK_DIR)
   ## - https://developer.hashicorp.com/nomad/docs/job-specification/template#template-destinations
   ## - https://developer.hashicorp.com/nomad/docs/runtime/environment#task-directories
   ## - https://developer.hashicorp.com/nomad/docs/concepts/filesystem
   container_workdir = "/local";
+  # Usually "/local/run/current"
   container_statedir = "${container_workdir}/${stateDir}";
+  # A link to the supervisord nix-installed inside the OCI image.
   container_supervisor_nix = "${container_statedir}/supervisor/nix-store";
+  # The URL to the listening inet or socket of the supervisord server:
   # The problem is that if we use "127.0.0.1:9001" as parameter (without the
   # "http" part) the container returns:
   # error: <class 'ValueError'>, Unknown protocol for serverurl 127.0.0.1:9001: file: /nix/store/izqhlj5i1x9ldyn43d02kcy4mafmj3ci-python3.9-supervisor-4.2.4/lib/python3.9/site-packages/supervisor/xmlrpc.py line: 508
@@ -33,6 +39,8 @@ let
   # Nov 02 11:44:36 hostname cluster-18f3852f-e067-6394-8159-66a7b8da2ecc[1088457]: Error: Cannot open an HTTP server: socket.error reported -2
   # Nov 02 11:44:36 hostname cluster-18f3852f-e067-6394-8159-66a7b8da2ecc[1088457]: For help, use /nix/store/izqhlj5i1x9ldyn43d02kcy4mafmj3ci-python3.9-supervisor-4.2.4/bin/supervisord -h
   container_supervisord_url = "unix://${unixHttpServerPort}";
+  # Location of the supervisord config file inside the container.
+  # This file can be mounted as a volume or created as a template.
   container_supervisord_conf = "${container_statedir}/supervisor/supervisord.conf";
   container_supervisord_loglevel = "info";
 
@@ -58,12 +66,11 @@ let
   # HCL format that is heavily specified in the docs. Nice!
   #
   # But note that it starts saying "Nomad HCL is parsed in the command line and
-  # sent to Nomad in JSON format via the HTTP API." and here are the API docs
-  # with "JSON Job Specification" in its title:
+  # sent to Nomad in JSON format via the HTTP API." and here there are the API
+  # docs that have "JSON Job Specification" in its title:
   # https://developer.hashicorp.com/nomad/api-docs/json-jobs
   # well, this is the format that `nomad job run` expects if you use the `-json`
-  # argument. If you don't provide the `-json` argument it expects HCL or its
-  # JSON representation: https://github.com/hashicorp/hcl/blob/main/json/spec.md
+  # argument.
   #
   # I finally found this in the HCL overview page:
   # https://developer.hashicorp.com/nomad/docs/job-specification/hcl2
@@ -72,6 +79,9 @@ let
   # by the HCL parser is not the same as the API's JSON format. The HCL parser's
   # JSON format is unspecified, so the API format is preferred. You can use the
   # API format with the -json command line flag."
+  #
+  # So, if you don't provide the `-json` argument it expects HCL or its JSON
+  # representation: https://github.com/hashicorp/hcl/blob/main/json/spec.md
   #
   # We are using what HashiCorp calls an unespecified format but it the same
   # format the SRE team is using.
@@ -253,7 +263,7 @@ let
                 SUPERVISORD_URL="{{ env "NOMAD_META_SUPERVISORD_URL" }}"
                 SUPERVISORD_CONFIG="{{ env "NOMAD_META_SUPERVISORD_CONFIG" }}"
                 SUPERVISORD_LOGLEVEL="{{ env "NOMAD_META_SUPERVISORD_LOGLEVEL" }}"
-                '';
+              '';
               # Specifies the behavior Nomad should take if the rendered
               # template changes. Nomad will always write the new contents of
               # the template to the specified destination. The following

@@ -134,7 +134,7 @@ case "$op" in
         local usage="USAGE: wb nomad $op RUN-DIR"
         local dir=${1:?$usage}
 
-        echo "  - Nomad job: $(realpath $dir)/nomad/job-cluster.hcl"
+        echo "  - Nomad job: $(realpath $dir)/nomad/nomad-job.json"
         ;;
 
     # Nomad-specific
