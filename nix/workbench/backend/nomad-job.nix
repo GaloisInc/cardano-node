@@ -36,6 +36,19 @@ let
   container_supervisord_conf = "${container_statedir}/supervisor/supervisord.conf";
   container_supervisord_loglevel = "info";
 
+  # About the "template" stanza:
+  # The templates documentations show "left_delimiter" and "right_delimiter"
+  # options which default to "{{" and "}}" repectively. See:
+  # https://developer.hashicorp.com/nomad/docs/job-specification/template#left_delimiter
+  # But those don't work to escape text to avoid HCL expressions interpolation.
+  # We are using what says here:
+  # "In both quoted and heredoc string expressions, Nomad supports template
+  # sequences that begin with ${ and %{. These are described in more detail in
+  # the following section. To include these sequences literally without
+  # beginning a template sequence, double the leading character: $${ or %%{."
+  # https://developer.hashicorp.com/nomad/docs/job-specification/hcl2/expressions#string-literals
+  escapeTemplate = str: builtins.replaceStrings ["\${" "%{"] ["\$\${" "%%{"] str;
+
   # About the JSON Job Specification and its odd assumptions:
   #
   # At least in Nomad version v1.4.3, the CLI command to submit new jobs
@@ -207,7 +220,7 @@ let
       # container, web application, or batch processing.
       # https://developer.hashicorp.com/nomad/docs/job-specification/task
       task = let
-        valueF = (name: nodeSpecs: volumes: taskDefaults // {
+        valueF = (name: volumes: (taskDefaults // {
 
           driver = "podman";
 
@@ -220,12 +233,7 @@ let
           # Specifies environment variables that will be passed to the running
           # process.
           # `null` because we are using a "template" (see below).
-          env = {
-            #SUPERVISOR_NIX = container_supervisor_nix;
-            #SUPERVISORD_URL = container_supervisord_url;
-            #SUPERVISORD_CONFIG = container_supervisord_conf;
-            #SUPERVISORD_LOGLEVEL = container_supervisord_loglevel;
-          };
+          env = {};
 
           # Specifies the set of templates to render for the task. Templates can
           # be used to inject both static and dynamic configuration with data
@@ -236,6 +244,7 @@ let
               # podman container input environment variables.
               env = true;
               # File name to create inside the allocation directory.
+              # Created in NOMAD_DATA_DIR/alloc/ALLOC_ID/TASK_NAME/envars
               destination = "envars";
               # See runtime for available variables:
               # https://developer.hashicorp.com/nomad/docs/runtime/environment
@@ -253,15 +262,87 @@ let
               change_mode = "noop";
               error_on_missing_key = true;
             }
-            # supervisord config.
+            # supervisord configuration file.
             {
               env = false;
               destination = "${container_supervisord_conf}";
-              data = supervisorConf.out.text;
+              data = escapeTemplate supervisorConf.out.text;
               change_mode = "noop";
               error_on_missing_key = true;
             }
-          ];
+            # Generator start.sh script.
+            {
+              env = false;
+              destination = "${container_statedir}/generator/start.sh";
+              data = escapeTemplate
+                profileNix.generator-service.startupScript.value;
+              change_mode = "noop";
+              error_on_missing_key = true;
+            }
+            # Generator configuration file.
+            {
+              env = false;
+              destination = "${container_statedir}/generator/run-script.json";
+              data = escapeTemplate (__readFile
+                profileNix.generator-service.runScript.JSON.outPath);
+              change_mode = "noop";
+              error_on_missing_key = true;
+            }
+/* TODO: Tracer still needs to use volumes because tracer.socket is shared.
+            # Tracer start.sh script.
+            {
+              env = false;
+              destination = "${container_statedir}/tracer/start.sh";
+              data = escapeTemplate
+                profileNix.tracer-service.startupScript.value;
+              change_mode = "noop";
+              error_on_missing_key = true;
+            }
+            # Tracer configuration file.
+            {
+              env = false;
+              destination = "${container_statedir}/tracer/config.json";
+              data = escapeTemplate (lib.generators.toJSON {}
+                profileNix.tracer-service.config.value);
+              change_mode = "noop";
+              error_on_missing_key = true;
+            }
+*/
+          ]
+          ++
+          (lib.lists.flatten (lib.mapAttrsToList
+            (_: nodeSpec: [
+              # Node start.sh script.
+              {
+                env = false;
+                destination = "${container_statedir}/${nodeSpec.name}/start.sh";
+                data = escapeTemplate
+                    profileNix.node-services."${nodeSpec.name}".startupScript.value;
+                change_mode = "noop";
+                error_on_missing_key = true;
+              }
+              # Node configuration file.
+              {
+                env = false;
+                destination = "${container_statedir}/${nodeSpec.name}/config.json";
+                data = escapeTemplate (lib.generators.toJSON {}
+                  profileNix.node-services."${nodeSpec.name}".nodeConfig.value);
+                change_mode = "noop";
+                error_on_missing_key = true;
+              }
+              # Node topology file.
+              {
+                env = false;
+                destination = "${container_statedir}/${nodeSpec.name}/topology.json";
+                data = escapeTemplate (lib.generators.toJSON {}
+                  profileNix.node-services."${nodeSpec.name}".topology.value);
+                change_mode = "noop";
+                error_on_missing_key = true;
+              }
+            ])
+            profileNix.node-specs.value
+          ))
+          ;
 
           # Specifies where a group volume should be mounted.
           volume_mount = null; #TODO
@@ -344,19 +425,16 @@ let
           # overrides any vault block set at the group or job level.
           vault = null;
 
-        });
+        }));
       in lib.listToAttrs (
-        [
-          {name = "generator"; value = valueF "generator" null [ stateDir ];}
-        ]
-        ++ lib.optionals profileNix.value.node.tracer [
-          {name = "tracer";    value = valueF "tracer"    null [ stateDir ];}
+        lib.optionals profileNix.value.node.tracer [
+          {name = "tracer";    value = valueF "tracer"    [];}
         ]
         ++
         (lib.mapAttrsToList
-          (_: nodeSpecs: {
-            name = nodeSpecs.name;
-            value = valueF nodeSpecs.name nodeSpecs [];
+          (_: nodeSpec: {
+            name = nodeSpec.name;
+            value = valueF nodeSpec.name [];
           })
           (profileNix.node-specs.value)
         )
@@ -552,5 +630,5 @@ let
     # user = null;
   };
 
-in pkgs.writeText "nomad-job.json"
+in pkgs.writeText "workbench-cluster-nomad-job.json"
   (lib.generators.toJSON {} clusterJob)

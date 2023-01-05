@@ -76,8 +76,8 @@ with lib;
             sigKey         = "./genesis/utxo-keys/utxo1.skey";
             runScriptFile  = "run-script.json";
             ## path to the config and socket of the locally running node.
-            nodeConfigFile = "./node-0/config.json";
-            localNodeSocketPath = "./node-0/node.socket";
+            nodeConfigFile = "../node-0/config.json";
+            localNodeSocketPath = "../node-0/node.socket";
           } // optionalAttrs profile.node.tracer {
             tracerSocketPath = "../tracer/tracer.socket";
           } // optionalAttrs useCabalRun {

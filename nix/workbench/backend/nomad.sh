@@ -141,27 +141,30 @@ case "$op" in
     service-start )
         local usage="USAGE: wb nomad $op RUN-DIR NODE-NAME"
         local dir=${1:?$usage}; shift
+        local task=${1:?$usage}; shift
         local service=${1:?$usage}; shift
 
-        backend_nomad nomad-alloc-exec-supervisorctl "$dir" "$service" start "$service"
+        backend_nomad nomad-alloc-exec-supervisorctl "$dir" "$task" start "$service"
         ;;
 
     # Nomad-specific
     service-stop )
         local usage="USAGE: wb nomad $op RUN-DIR NODE-NAME"
         local dir=${1:?$usage}; shift
+        local task=${1:?$usage}; shift
         local service=${1:?$usage}; shift
 
-        backend_nomad nomad-alloc-exec-supervisorctl "$dir" "$service" stop "$service"
+        backend_nomad nomad-alloc-exec-supervisorctl "$dir" "$task" stop "$service"
         ;;
 
     # Nomad-specific
     is-service-running )
         local usage="USAGE: wb nomad $op RUN-DIR DOCKER-SERVICE"
         local dir=${1:?$usage}; shift
+        local task=${1:?$usage}; shift
         local service=${1:?$usage}; shift
 
-        backend_nomad nomad-alloc-exec-supervisorctl "$dir" "$service" status "$service" > /dev/null && true
+        backend_nomad nomad-alloc-exec-supervisorctl "$dir" "$task" status "$service" > /dev/null && true
         ;;
 
     # Nomad-specific
@@ -183,7 +186,7 @@ case "$op" in
         local dir=${1:?$usage}; shift
         local node=${1:?$usage}; shift
 
-        backend_nomad service-start "$dir" $node
+        backend_nomad service-start "$dir" $node $node
         # Always wait for the node to be ready.
         backend_nomad wait-node "$dir" $node
         ;;
@@ -193,7 +196,7 @@ case "$op" in
         local dir=${1:?$usage}; shift
         local node=${1:?$usage}; shift
 
-        backend_nomad service-stop "$dir" $node
+        backend_nomad service-stop "$dir" $node $node
         ;;
 
     wait-node )
@@ -309,6 +312,22 @@ case "$op" in
         local nomad_alloc_id=$(nomad job allocs -json "$nomad_job_name" | jq -r '.[0].ID')
         setenvjqstr 'nomad_alloc_id' "$nomad_alloc_id"
         msg "Nomad job allocation ID is: $nomad_alloc_id"
+
+        if jqtest ".node.tracer" "$dir"/profile.json
+        then
+          ln -s "$dir/nomad/data/alloc/$nomad_alloc_id/tracer/local/run/current/tracer" "$dir/tracer"
+          ln -s "$dir/nomad/data/alloc/$nomad_alloc_id/tracer/local/run/current/supervisor/supervisor.log" "$dir/tracer/supervisord.log"
+        fi
+        # Generator runs inside task/supervisord "node-0"
+        ln -s "$dir/nomad/data/alloc/$nomad_alloc_id/node-0/local/run/current/generator" "$dir/generator"
+        local nodes=($(jq_tolist keys "$dir"/node-specs.json))
+        for node in ${nodes[*]}
+        do
+          msg "ln -s \"$dir/nomad/data/alloc/$nomad_alloc_id/$node/local/run/current/$node\" \"$dir/$node\""
+          ln -s "$dir/nomad/data/alloc/$nomad_alloc_id/$node/local/run/current/$node" "$dir/$node"
+          ln -s "$dir/nomad/data/alloc/$nomad_alloc_id/$node/local/run/current/supervisor/supervisor.log" "$dir/$node/supervisord.log"
+        done
+
         # Show `--status` of `supervisorctl` inside the container.
         local container_supervisor_nix=$(  envjqr 'container_supervisor_nix')
         local container_supervisord_url=$( envjqr 'container_supervisord_url')
@@ -321,7 +340,7 @@ case "$op" in
 
         if jqtest ".node.tracer" "$dir"/profile.json
         then
-          backend_nomad service-start "$dir" tracer
+          backend_nomad service-start "$dir" tracer tracer
           # Wait for tracer socket
           # If tracer fails here, the rest of the cluster is brought up without
           # any problems.
@@ -360,7 +379,8 @@ case "$op" in
                --* ) msg "FATAL:  unknown flag '$1'"; usage_docker;;
                * ) break;; esac; shift; done
 
-        backend_nomad service-start "$dir" generator
+        msg "Starting generator inside node-0 container ..."
+        backend_nomad service-start "$dir" node-0 generator
         ;;
 
     wait-node-stopped )
@@ -370,7 +390,7 @@ case "$op" in
 
         progress_ne "docker" "waiting until $node stops:  ....."
         local i=0
-        while backend_nomad is-service-running "$dir" "$node"
+        while backend_nomad is-service-running "$dir" "$node" "$node"
         do
           echo -ne "\b\b\b\b\b"; printf "%5d" $i >&2; i=$((i+1))
           sleep 1
@@ -388,7 +408,7 @@ case "$op" in
 
         for ((pool_ix=0; pool_ix < $pools; pool_ix++))
         do
-          while backend_nomad is-service-running "$dir" "node-${pool_ix}" && test -f $dir/flag/cluster-termination
+          while backend_nomad is-service-running "$dir" "node-${pool_ix}" "node-${pool_ix}" && test -f $dir/flag/cluster-termination
           do
             echo -ne "\b\b\b\b\b\b"; printf "%6d" $((i + 1)); i=$((i+1))
             sleep 1
@@ -408,17 +428,17 @@ case "$op" in
         local nomad_alloc_id=$(envjqr 'nomad_alloc_id')
         local nomad_job_name=$(envjqr 'nomad_job_name')
 
-        msg "Stopping generator inside its container ..."
-        backend_nomad nomad-alloc-exec-supervisorctl "$dir" generator stop all || true
+        msg "Stopping generator inside node-0 container ..."
+        backend_nomad nomad-alloc-exec-supervisorctl "$dir" node-0 stop generator || true
         if jqtest ".node.tracer" "$dir"/profile.json
         then
           msg "Stopping tracer inside its container ..."
-          backend_nomad nomad-alloc-exec-supervisorctl "$dir" tracer stop all || true
+          backend_nomad nomad-alloc-exec-supervisorctl "$dir" tracer stop tracer || true
         fi
         for node in $(jq_tolist 'keys' "$dir"/node-specs.json)
         do
             msg "Stopping $node inside its container ..."
-            backend_nomad nomad-alloc-exec-supervisorctl "$dir" "$node" stop all || true
+            backend_nomad nomad-alloc-exec-supervisorctl "$dir" "$node" stop "$node" || true
         done
 
         msg "Stopping nomad job ..."
@@ -835,8 +855,7 @@ nomad_create_job_file() {
       # the workbench's "supervisor" backend.
       local jq_filter="
         [
-            \"${dir}/tracer:${container_mountpoint}/tracer:rw\"
-          , \"${dir}/${node}:${container_mountpoint}/${node}:rw,exec\"
+          \"${dir}/tracer:${container_mountpoint}/tracer:rw\"
         ]
         +
         [
@@ -844,10 +863,9 @@ nomad_create_job_file() {
         ]
         +
         [
-          \"${dir}/generator:${container_mountpoint}/generator:ro\"
+            \"${dir}/genesis:${container_mountpoint}/generator/genesis:ro\"
+          , \"${dir}/genesis/utxo-keys:${container_mountpoint}/generator/genesis/utxo-keys:ro\"
         ]
-        +
-        ( . | keys | map(select(. != \"${node}\")) | map(\"${dir}/\" + . + \":${container_mountpoint}/\" + . + \":ro\") )
         +
         \$mainnet_mirror_volumes
       "
@@ -855,49 +873,20 @@ nomad_create_job_file() {
       jq ".job[\"$nomad_job_name\"][\"group\"][\"$nomad_job_group_name\"][\"task\"][\"$node\"][\"config\"][\"volumes\"] = \$podman_volumes" --argjson podman_volumes "$podman_volumes" $dir/nomad/nomad-job.json | sponge $dir/nomad/nomad-job.json
     done
     # Tracer
-    local task_stanza_name_t="tracer"
-    # Tracer only needs access to itself.
-    # *1 And remapping its own supervisor to the cluster/upper directory.
-    # *2 And read only access to eveything else so supervisor.conf doesn't
-    # complain about missing files/folders and can be shared unchanged with
-    # the workbench's "supervisor" backend.
-    local jq_filter_t="
-      [
+    if jqtest ".node.tracer" "$dir"/profile.json
+    then
+      local task_stanza_name_t="tracer"
+      # Tracer only needs access to itself.
+      # *1 And remapping its own supervisor to the cluster/upper directory.
+      # *2 And read only access to eveything else so supervisor.conf doesn't
+      # complain about missing files/folders and can be shared unchanged with
+      # the workbench's "supervisor" backend.
+      local jq_filter_t="
+        [
           \"${dir}/tracer:${container_mountpoint}/tracer:rw\"
-      ]
-      +
-      [
-         \"${dir}/generator:${container_mountpoint}/generator:ro\"
-      ]
-      +
-      ( . | keys | map(\"${dir}/\" + . + \":${container_mountpoint}/\" + . + \":ro\") )
-    "
-    local podman_volumes_t=$(jq "$jq_filter_t" "$dir"/profile/node-specs.json)
-    jq ".job[\"$nomad_job_name\"][\"group\"][\"$nomad_job_group_name\"][\"task\"][\"tracer\"][\"config\"][\"volumes\"] = \$podman_volumes_t" --argjson podman_volumes_t "$podman_volumes_t" $dir/nomad/nomad-job.json | sponge $dir/nomad/nomad-job.json
-    # Generator
-    local task_stanza_name_g="generator"
-    # Generator needs access to itself, "./genesis", "./genesis/utxo-keys", every node inside its folder (with the genesis of every node).
-    # *1 And remapping its own supervisor to the cluster/upper directory.
-    # *2 And read only access to eveything else so supervisor.conf doesn't
-    # complain about missing files/folders and can be shared unchanged with
-    # the workbench's "supervisor" backend.
-    local jq_filter_g="
-      [
-          \"${dir}/tracer:${container_mountpoint}/tracer:rw\"
-        , \"${dir}/generator:${container_mountpoint}/generator:rw\"
-      ]
-      +
-      [
-          \"${dir}/genesis:${container_mountpoint}/generator/genesis:ro\"
-        , \"${dir}/genesis/utxo-keys:${container_mountpoint}/generator/genesis/utxo-keys:ro\"
-      ]
-      +
-      ( . | keys | map( \"${dir}/\" + . + \":${container_mountpoint}/generator/\" + . + \":ro\" ) )
-      +
-      ( . | keys | map( \"${dir}/genesis:${container_mountpoint}/generator/\" + . + \"/genesis:ro\" ) )
-      +
-      ( . | keys | map(\"${dir}/\" + . + \":${container_mountpoint}/\" + . + \":ro\") )
-    "
-    local podman_volumes_g=$(jq "$jq_filter_g" "$dir"/profile/node-specs.json)
-    jq ".job[\"$nomad_job_name\"][\"group\"][\"$nomad_job_group_name\"][\"task\"][\"generator\"][\"config\"][\"volumes\"] = \$podman_volumes_g" --argjson podman_volumes_g "$podman_volumes_g" $dir/nomad/nomad-job.json | sponge $dir/nomad/nomad-job.json
+        ]
+      "
+      local podman_volumes_t=$(jq "$jq_filter_t" "$dir"/profile/node-specs.json)
+      jq ".job[\"$nomad_job_name\"][\"group\"][\"$nomad_job_group_name\"][\"task\"][\"tracer\"][\"config\"][\"volumes\"] = \$podman_volumes_t" --argjson podman_volumes_t "$podman_volumes_t" $dir/nomad/nomad-job.json | sponge $dir/nomad/nomad-job.json
+    fi
 }
