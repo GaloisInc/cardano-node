@@ -50,26 +50,28 @@ data PingClientCmdError
 
 
 data PingCmd = PingCmd
-  { pingCmdCount    :: !Word32
-  , pingCmdHost     :: !(Maybe String)
-  , pingCmdUnixSock :: !(Maybe String)
-  , pingCmdPort     :: !String
-  , pingCmdMagic    :: !Word32
-  , pingCmdJson     :: !Bool
-  , pingCmdQuiet    :: !Bool
+  { pingCmdCount     :: !Word32
+  , pingCmdHost      :: !(Maybe String)
+  , pingCmdUnixSock  :: !(Maybe String)
+  , pingCmdPort      :: !String
+  , pingCmdMagic     :: !Word32
+  , pingCmdJson      :: !Bool
+  , pingCmdQuiet     :: !Bool
+  , pingCmdHandshake :: !Bool
   } deriving (Eq, Show)
 
 pingClient :: Tracer IO CNP.LogMsg -> Tracer IO String -> PingCmd -> [CNP.NodeVersion] -> AddrInfo -> IO ()
 pingClient stdout stderr cmd versions peer =
   CNP.pingClient stdout stderr opts versions peer
   where opts = CNP.PingOpts
-          { CNP.pingOptsQuiet     = pingCmdQuiet cmd
-          , CNP.pingOptsJson      = pingCmdJson cmd
-          , CNP.pingOptsCount     = pingCmdCount cmd
-          , CNP.pingOptsHost      = pingCmdHost cmd
-          , CNP.pingOptsUnixSock  = pingCmdUnixSock cmd
-          , CNP.pingOptsPort      = pingCmdPort cmd
-          , CNP.pingOptsMagic     = pingCmdMagic cmd
+          { CNP.pingOptsQuiet          = pingCmdQuiet cmd
+          , CNP.pingOptsJson           = pingCmdJson cmd
+          , CNP.pingOptsCount          = pingCmdCount cmd
+          , CNP.pingOptsHost           = pingCmdHost cmd
+          , CNP.pingOptsUnixSock       = pingCmdUnixSock cmd
+          , CNP.pingOptsPort           = pingCmdPort cmd
+          , CNP.pingOptsMagic          = pingCmdMagic cmd
+          , CNP.pingOptsHandshakeQuery = pingCmdHandshake cmd
           }
 
 runPingCmd :: PingCmd -> ExceptT PingClientCmdError IO ()
@@ -184,4 +186,8 @@ pPing = PingCmd
       (   Opt.long "quiet"
       <>  Opt.short 'q'
       <>  Opt.help "Quiet flag, CSV/JSON only output"
+      )
+  <*> Opt.switch
+      (   Opt.long "handshake"
+      <>  Opt.help "Handshake query flag to request the supported protocol versions."
       )
