@@ -14,7 +14,10 @@ module Cardano.Node.Tracing.Tracers
 
 import           Codec.CBOR.Read (DeserialiseFailure)
 import           Data.Proxy (Proxy (..))
+import           Data.IORef
+import           Data.Time.Clock (NominalDiffTime, UTCTime, addUTCTime, getCurrentTime)
 
+                 
 import           Cardano.Logging
 
 import           Cardano.Node.Tracing.Formatting ()
@@ -41,6 +44,7 @@ import           Cardano.Node.Tracing
 import           Cardano.Node.Tracing.Peers
 import qualified Cardano.Node.Tracing.StateRep as SR
 import           "contra-tracer" Control.Tracer (Tracer (..))
+import qualified "contra-tracer" Control.Tracer
 
 import           Ouroboros.Consensus.Ledger.Inspect (LedgerEvent)
 import           Ouroboros.Consensus.MiniProtocol.ChainSync.Client (TraceChainSyncClientEvent)
@@ -196,7 +200,7 @@ mkConsensusTracers :: forall blk.
   -> TraceConfig
   -> NodeKernelData blk
   -> IO (Consensus.Tracers IO (ConnectionId RemoteAddress) (ConnectionId LocalAddress) blk)
-mkConsensusTracers configReflection trBase trForward mbTrEKG _trDataPoint trConfig nodeKernel = do
+mkConsensusTracers configReflection trBase trForward mbTrEKG trDataPoint trConfig nodeKernel = do
     chainSyncClientTr  <- mkCardanoTracer
                 trBase trForward mbTrEKG
                  ["ChainSync", "Client"]
@@ -230,6 +234,26 @@ mkConsensusTracers configReflection trBase trForward mbTrEKG _trDataPoint trConf
                 ["BlockFetch", "Client"]
     configureTracers configReflection trConfig [blockFetchClientTr]
 
+    -- FIXME:MT: new semantics here:
+    blockFetchClientDigest <- mkDataPointTracer trDataPoint
+                              -- (const ["New","BlockFetch","Client"])
+    configureTracers configReflection trConfig [blockFetchClientDigest]
+
+    -- NOTE[MT]: Helps:
+    -- :: Trace (IO TraceLabelPeer _ (B*.TraceFetchClientState ...)
+    blockFetchClientDP <-
+       Control.Tracer.traceWith <$>
+         mkDigestTracer 30 50
+           -- FIXME[F2]: these parameters need tweaking.
+           --  - would like to be able to configure
+           --    - directly
+           --    - or programmatically, e.g. based on configured peer valency.
+           -- FIXME[F2]: reduce/eliminate need for parameters
+           --  - E.g., by allowing an argument to the datapoint fetch, we
+           --    could at least reduce amount of polling by the datapoint
+           --    client.
+           (Tracer $ traceWith blockFetchClientDigest)
+    
     -- Special blockFetch client metrics, send directly to EKG
     blockFetchClientMetricsTr <- do
         tr1 <- foldMTraceM calculateBlockFetchClientMetrics initialClientMetrics
@@ -297,9 +321,24 @@ mkConsensusTracers configReflection trBase trForward mbTrEKG _trDataPoint trConf
                 ["Consensus", "Startup"]
     configureTracers configReflection trConfig [consensusStartupErrorTr]
 
+    chainSyncClientDigest <- mkDataPointTracer
+                trDataPoint
+                (const ["New","ChainSync","Client"])
+    let docChainSyncClientDigest = Documented [] -- FIXME: TODO enter and copy
+    configureTracers trConfig docChainSyncClientDigest
+                     [chainSyncClientDigest]
+
+    chainSyncClientDP <-
+       Control.Tracer.traceWith <$>
+         mkDigestTracer 30 50
+           -- MT:FIXME: these parameters need tweaking.
+           --   could we configure?  E.g., based on number of peers.
+           (Tracer $ traceWith chainSyncClientDigest)
+  
     pure $ Consensus.Tracers
-      { Consensus.chainSyncClientTracer = Tracer $
-          traceWith chainSyncClientTr
+      { Consensus.chainSyncClientTracer =
+          Tracer (traceWith chainSyncClientTr)
+          <> Tracer chainSyncClientDP
       , Consensus.chainSyncServerHeaderTracer = Tracer $
             traceWith chainSyncServerHeaderTr
            <> traceWith chainSyncServerHeaderMetricsTr
@@ -309,7 +348,8 @@ mkConsensusTracers configReflection trBase trForward mbTrEKG _trDataPoint trConf
           traceWith blockFetchDecisionTr
       , Consensus.blockFetchClientTracer = Tracer $
           traceWith blockFetchClientTr
-           <> traceWith blockFetchClientMetricsTr
+          <> traceWith blockFetchClientMetricsTr
+          <> blockFetchClientDP
       , Consensus.blockFetchServerTracer = Tracer $
           traceWith blockFetchServerTr
       , Consensus.forgeStateInfoTracer = Tracer $
@@ -650,3 +690,27 @@ mkDiffusionTracersExtra configReflection trBase trForward mbTrEKG _trDataPoint t
        , NonP2P.dtAcceptPolicyTracer = Tracer $
            traceWith dtAcceptPolicyTr
        }
+
+---- abstractions over Tracer ------------------------------------------------
+-- MT:FIXME: code belongs elsewhere, but where?
+-- MT:FIXME: rewrite using a monadic tracing fold!
+-- Aha, this is very similar:
+--   iohk-monitoring-framework/tracer-transformers/src/Control/Tracer/Transformers.hs
+
+-- | mkDigestTracer p mx - trace the values over the last time period 'p'
+--   with a maximum of max' values.
+mkDigestTracer :: NominalDiffTime -> Int -> Tracer IO [(UTCTime,a)] -> IO (Tracer IO a)
+mkDigestTracer period max' tr = do
+    qRef <- newIORef []
+    pure $ Tracer $ \a-> do
+      now <- getCurrentTime
+      as <- readIORef qRef
+      let cutoffTime = addUTCTime (negate period) now 
+      let as' = (now,a)
+              : take (max'-1) (takeWhile ((> cutoffTime) . fst) as)
+      writeIORef qRef as'
+      Control.Tracer.traceWith tr as'
+    -- FIXME[E2]: strictness?
+    -- FIXME[E2]: encode time with CBOR/?
+    
+    

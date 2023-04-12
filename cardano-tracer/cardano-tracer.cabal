@@ -241,7 +241,8 @@ library demo-acceptor-lib
 
   exposed-modules:      Cardano.Tracer.Test.Acceptor
 
-  build-depends:        async-extras
+  build-depends:        aeson
+                      , async-extras
                       , bytestring
                       , cardano-tracer
                       , containers
@@ -253,6 +254,7 @@ library demo-acceptor-lib
                       , stm
                       , text
                       , tasty-quickcheck
+                      , time
                       , trace-forward
 
 executable demo-acceptor
