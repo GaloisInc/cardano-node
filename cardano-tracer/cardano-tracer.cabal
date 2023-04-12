@@ -270,6 +270,29 @@ executable demo-acceptor
   if os(windows)
     buildable:          False
 
+-- BEGIN mtlocal
+executable demo-node-aggregator
+  import:              base, project-config
+
+  hs-source-dirs:      demo
+
+  main-is:             node-aggregator.hs
+
+  build-depends:         demo-acceptor-lib
+                       , aeson
+                       , bytestring
+                       , cardano-node
+                       , containers
+                       , formatting
+                       , text
+                       , time
+                       , utf8-string
+
+  ghc-options:         -threaded
+                       -rtsopts
+                       -with-rtsopts=-T
+-- END mtlocal
+
 test-suite cardano-tracer-test
   import:               project-config
   type:                 exitcode-stdio-1.0

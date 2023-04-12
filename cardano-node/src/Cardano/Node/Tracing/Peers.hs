@@ -43,3 +43,5 @@ traceNodePeers
   -> [PeerT blk]
   -> IO ()
 traceNodePeers tr ev = traceWith tr $ NodePeers (fmap ppPeer ev)
+
+  -- NOTE[SK]: could be a selective monadic action.

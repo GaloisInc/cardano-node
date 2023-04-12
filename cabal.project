@@ -48,7 +48,7 @@ package cardano-git-rev
   ghc-options: -Werror
 
 package cardano-node
-  ghc-options: -Werror
+  -- ghc-options: -Werror
 
 package cardano-node-chairman
   ghc-options: -Werror
@@ -60,13 +60,13 @@ package tx-generator
   ghc-options: -Werror
 
 package trace-dispatcher
-  ghc-options: -Werror
+  -- ghc-options: -Werror
 
 package trace-resources
   ghc-options: -Werror
 
 package cardano-tracer
-  ghc-options: -Werror
+  -- ghc-options: -Werror
 
 package submit-api
   ghc-options: -Werror

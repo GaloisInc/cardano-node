@@ -79,6 +79,11 @@ initTraceDispatcher nc p networkMagic nodeKernel p2pMode = do
   now <- getCurrentTime
   prepareNodeInfo nc p trConfig now >>= traceWith (nodeInfoTracer tracers)
 
+    -- NOTE[SK]:
+    --  essence here
+    --  setup and never touch again
+    --  will be creating digest here.
+    
   pure tracers
  where
   mkTracers trConfig = do

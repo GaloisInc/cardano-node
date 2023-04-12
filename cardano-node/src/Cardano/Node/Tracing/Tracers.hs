@@ -86,7 +86,6 @@ mkDispatchTracers
   -> SomeConsensusProtocol
   -> IO (Tracers (ConnectionId RemoteAddress) (ConnectionId LocalAddress) blk p2p)
 mkDispatchTracers nodeKernel trBase trForward mbTrEKG trDataPoint trConfig enableP2P p = do
-
     configReflection <- emptyConfigReflection
 
     nodeInfoDP <- mkDataPointTracer trDataPoint
@@ -180,6 +179,7 @@ mkDispatchTracers nodeKernel trBase trForward mbTrEKG trDataPoint trConfig enabl
       , resourcesTracer = Tracer (traceWith resourcesTr)
       , peersTracer     = Tracer (traceWith peersTr)
                           <> Tracer (traceNodePeers nodePeersDP)
+                                -- NOTE[SK]: transforming tracer.
     }
 
 mkConsensusTracers :: forall blk.
