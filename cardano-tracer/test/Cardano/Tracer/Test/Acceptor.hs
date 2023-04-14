@@ -107,7 +107,6 @@ launchAcceptorsSimple mode ekgFreq localSocks dpGroups = do
           , teTracer              = tr
           }
 
-
   void . sequenceConcurrently $
       runAcceptors tracerEnv
     : [ runDataPointsPrinter dpNames period dpRequestors (length localSocks)
@@ -119,8 +118,8 @@ launchAcceptorsSimple mode ekgFreq localSocks dpGroups = do
 
 type DPName = String
               -- FIXME:
-              --  - String because we used getArgs
-              --  - but elsewhere: type DataPointName   = Text
+              --  - String because we used getArgs, but elsewhere:
+              --    type DataPointName   = Text
               --  - is this going to be problematic??
               
 type Period = Seconds
@@ -140,7 +139,16 @@ dpTypes = M.fromList
   -- FIXME:
   --   - this is statically known for each node version.
   --   - this is poor coupling: we need to ensure this is consistent!
-
+  -- TODO
+  --   - Later, we could use the node version (in the NodeInfo Datapoint),
+  --     to create the rest of the datapoints and their "types".
+  -- DESIGN
+  --   - An alternative design would be this
+  --     - the user of this tool would indicate for a named datapoint
+  --       if he/she wants to treat a datapoint as a digest and decode it.
+  --       - pro :: one can extract raw digests.
+  --       - pro :: problematic if the user gets the "types" wrong.
+  
 ---- handle datapoints ---------------------------------------------
 
 -- | To be able to ask any 'DataPoint' by the name without knowing the
