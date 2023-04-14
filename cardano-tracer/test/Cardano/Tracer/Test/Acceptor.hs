@@ -5,7 +5,6 @@
 module Cardano.Tracer.Test.Acceptor
   ( AcceptorsMode (..)
   , launchAcceptorsSimple
-  , launchInitiators
   ) where
 
 import           Control.Concurrent.STM.TVar (newTVarIO, readTVarIO)
@@ -40,11 +39,11 @@ data AcceptorsMode = Initiator | Responder
 
 launchAcceptorsSimple
   :: AcceptorsMode
-  -> FilePath
+  -> Pico
+  -> [FilePath]
   -> [(Seconds,[DPName])] -- for each period, a groups of datapoints to query
   -> IO ()
-launchAcceptorsSimple mode localSock dpGroups = do
-  -- print dpGroups -- FIXME: debug
+launchAcceptorsSimple mode ekgFreq localSocks dpGroups = do
   protocolsBrake <- initProtocolsBrake
   dpRequestors <- initDataPointRequestors
   connectedNodes <- initConnectedNodes
@@ -63,7 +62,32 @@ launchAcceptorsSimple mode localSock dpGroups = do
 
   tr <- mkTracerTracer $ SeverityF $ Just Warning
 
-  let tracerEnv =
+  network' <-
+    case mode of
+      Initiator -> return
+                 $ ConnectTo $ NE.fromList $ map LocalSocket localSocks
+      Responder -> do
+                   unless (length localSocks == 1) $
+                     fail "panic: internal error"
+                   return $ AcceptAt (LocalSocket (head localSocks))
+    
+  let mkConfig =
+        TracerConfig
+          { networkMagic   = 764824073
+          , network        = network'
+          , loRequestNum   = Just 1
+          , ekgRequestFreq = Just ekgFreq
+          , hasEKG         = Nothing
+          , hasPrometheus  = Nothing
+          , hasRTView      = Nothing
+          , logging        = NE.fromList
+                               [LoggingParams "/tmp/demo-acceptor" FileMode ForHuman]
+          , rotation       = Nothing
+          , verbosity      = Just Minimum
+          , metricsComp    = Nothing
+          }
+
+      tracerEnv =
         TracerEnv
           { teConfig              = mkConfig
           , teConnectedNodes      = connectedNodes
@@ -83,106 +107,39 @@ launchAcceptorsSimple mode localSock dpGroups = do
           , teTracer              = tr
           }
 
+
   void . sequenceConcurrently $
       runAcceptors tracerEnv
-    : [ runDataPointsPrinter dpNames period dpRequestors 1
-      | (period,dpNames) <- dpGroups
-      ]
- where
-  mkConfig = TracerConfig
-    { networkMagic   = 764824073
-    , network        = case mode of
-                         Initiator -> ConnectTo $ NE.fromList [LocalSocket localSock]
-                         Responder -> AcceptAt (LocalSocket localSock)
-    , loRequestNum   = Just 1
-    , ekgRequestFreq = Just 1.0
-    , hasEKG         = Nothing
-    , hasPrometheus  = Nothing
-    , hasRTView      = Nothing
-    , logging        = NE.fromList [LoggingParams "/tmp/demo-acceptor" FileMode ForHuman]
-    , rotation       = Nothing
-    , verbosity      = Just Minimum
-    , metricsComp    = Nothing
-    }
-
-
-launchInitiators
-  :: Pico
-  -> [FilePath]
-  -> [(Seconds,[DPName])] -- for each period, a groups of datapoints to query
-  -> IO ()
-launchInitiators ekgFreq localSocks dpGroups = do
-  protocolsBrake <- initProtocolsBrake
-  dpRequestors <- initDataPointRequestors
-  connectedNodes <- initConnectedNodes
-  acceptedMetrics <- initAcceptedMetrics
-  savedTO <- initSavedTraceObjects
-  currentLogLock <- newLock
-  void . sequenceConcurrently $
-      runAcceptors mkConfig connectedNodes acceptedMetrics savedTO
-                   dpRequestors protocolsBrake currentLogLock
     : [ runDataPointsPrinter dpNames period dpRequestors (length localSocks)
       | (period,dpNames) <- dpGroups
       ]
  where
-  mkConfig = TracerConfig
-    { networkMagic   = 764824073
-    , network        = ConnectTo $ NE.fromList $ map LocalSocket localSocks
-      -- NOTE: Nothing in the following two implies "default" values
-    , loRequestNum   = Just 1
-                       -- just one at a time, and what happens if we
-                       -- don't request enough?
-    , ekgRequestFreq = Just ekgFreq
-                     -- N.B.: this is the period (secs), not frequency (/sec)
-    , hasEKG         = Nothing
-    , hasPrometheus  = Nothing
-    , hasRTView      = Nothing
-    , logging        = NE.fromList [LoggingParams "/tmp/demo-acceptor" FileMode ForHuman]
-    , rotation       = Nothing
-    , verbosity      = Just Minimum
-      -- TODO: So, we can log minimum 'here', even if the "trace server"
-      -- is logging at a different verbosity?
-    }
 
-    -- TODO: figure out how to turn off logging.
-    
 ---- new Datapoint abstractions ------------------------------------
 
 type DPName = String
-              -- hmmm,
-              --   - String because we used getArgs
-              --   - but elsewhere: type DataPointName   = Text
+              -- FIXME:
+              --  - String because we used getArgs
+              --  - but elsewhere: type DataPointName   = Text
+              --  - is this going to be problematic??
               
 type Period = Seconds
 
 data DPType = DPT_Digest Int Period
             | DPT_Value (Maybe Period)  -- ^ may not have a known period.
 
-
--- the output of getDPs:
-
-data OutVal = OV_List [Value]  -- for digests, other?
-            | OV_Value Value   -- std Datapoints
-            deriving (Eq,Ord,Read,Show)
-
-data DPOut = DPO { dp       :: DPName
-                 , recvTime :: UTCTime
-                 , out      :: OutVal
-                 }
-             deriving (Eq,Ord,Read,Show)
-
 dpTypes :: M.Map DataPointName DPType
 dpTypes = M.fromList
-            [ ("Static.DatapointList" , DPT_Value Nothing )
-              -- Deprecated: remove soon!
-            , ("NodeInfo"             , DPT_Value Nothing )
+            [ ("NodeInfo"             , DPT_Value Nothing )
             , ("NodeState"            , DPT_Value Nothing )   
             , ("NodePeers"            , DPT_Value Nothing )   
             , ("New.BlockFetch.Client", DPT_Digest 30 50 )
             , ("New.ChainSync.Client" , DPT_Digest 30 50 )
             ]
 
-  -- statically known for each version.
+  -- FIXME:
+  --   - this is statically known for each node version.
+  --   - this is poor coupling: we need to ensure this is consistent!
 
 ---- handle datapoints ---------------------------------------------
 
@@ -213,7 +170,7 @@ runDataPointsPrinter dpNames wait dpRequestors lenRequestors =
 
   forever $ do
     dpReqs <- M.toList <$> readTVarIO dpRequestors
-      -- length should expect to be either 0 or numRequestors!
+      -- length should expect to be either 0 or lenRequestors!
     putStrLn $ ":DEBUG: dpReqs: " ++ show(length dpReqs)
     hFlush stdout 
     forM_ (zip dpReqs [0..]) $ \((nid, dpReq),reqIndex) -> do
@@ -270,7 +227,7 @@ handleDP_Digest rLasttime _ _ v = do
                    writeIORef rLasttime (fst $ head logs')
                  -- FIXME[F3]: TODO:
                  --  We have a lot of information to determine if
-                 --  we have lost any events ...
+                 --  we have lost any events, so we should determine so.
                  
   putChar '\n'
   hFlush stdout

@@ -8,6 +8,9 @@ import System.Exit (exitFailure)
 
 import Cardano.Tracer.Test.Acceptor
 
+-- FIXME:
+--  - Merge main' and main
+--  - improve CL processing.
 main' :: IO ()
 main' = do
   as <- getArgs
@@ -22,10 +25,7 @@ main' = do
 
   dps' <- processDPs as'
   
-  launchAcceptorsSimple ir' localSock dps'
-
-
--- FIXME: time to clone from demo-acceptor.
+  launchAcceptorsSimple ir' (10/1) [localSock] dps'
 
 main :: IO ()
 main = do
@@ -37,8 +37,10 @@ main = do
   (localSockets,as'') <- parseLocalSockets as'
   when (null localSockets) $
     usageFail "no sockets specified"
+  -- TODO: when you merge above, ensure Responder implies length localSockets == 1
   dps' <- processDPs as''
-  launchInitiators ekgFreq localSockets dps'
+  launchAcceptorsSimple Initiator ekgFreq localSockets dps'
+
 
 
 parseLocalSockets :: [String] -> IO ([String],[String])
