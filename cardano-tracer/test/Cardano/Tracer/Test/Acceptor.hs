@@ -129,11 +129,11 @@ data DPType = DPT_Digest Int Period
 
 dpTypes :: M.Map DataPointName DPType
 dpTypes = M.fromList
-            [ ("NodeInfo"             , DPT_Value Nothing )
-            , ("NodeState"            , DPT_Value Nothing )   
-            , ("NodePeers"            , DPT_Value Nothing )   
-            , ("New.BlockFetch.Client", DPT_Digest 30 50 )
-            , ("New.ChainSync.Client" , DPT_Digest 30 50 )
+            [ ("NodeInfo"          , DPT_Value Nothing )
+            , ("NodeState"         , DPT_Value Nothing )   
+            , ("NodePeers"         , DPT_Value Nothing )   
+            , ("BlockFetch.Client" , DPT_Digest 30 50 )
+            , ("ChainSync.Client"  , DPT_Digest 30 50 )
             ]
 
   -- FIXME:

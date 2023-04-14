@@ -713,49 +713,41 @@ mkDigestTracer period max' tr = do
     
     
 
-{-
-instance MetaTrace a => MetaTrace [(UTCTime,a)] where
-  nameSpaceFor = undefined
-  severityFor = undefined
-  documentFor = undefined
-  allNamespaces = undefined
--}
-
--- FIXME: the right way??
+-- FIXME: a more elegant way to 'name' this datapoint?
 instance MetaTrace
            [(UTCTime, TraceLabelPeer (ConnectionId RemoteAddress)
                                      (TraceChainSyncClientEvent blk))]
   where
-  namespaceFor _ = Namespace [] ["New","ChainSync","Client"]
+  namespaceFor _ = Namespace [] ["ChainSync","Client"]
 
-  severityFor  (Namespace _ ["New","ChainSync","Client"]) _ = Just Info
-  severityFor _ns _                          =    Nothing
+  severityFor (Namespace _ ["ChainSync","Client"]) _ = Just Info
+  severityFor _ns                                  _ = Nothing
 
-    -- datapoint should ignore.
+    -- NOTE[MT]: datapoint should ignore.
   
-  documentFor  (Namespace _ ["New","ChainSync","Client"]) =
-    Just "trace of ChainSyncClient"
+  documentFor  (Namespace _ ["ChainSync","Client"]) =
+    Just "Digest of the ChainSync.Client tracer"
   documentFor _ns =
     Nothing
 
-  allNamespaces = [ Namespace [] ["New","ChainSync","Client"]]
+  allNamespaces = [ Namespace [] ["ChainSync","Client"]]
 
--- FIXME: the right way?
+-- FIXME: a more elegant way to 'name' this datapoint?
 instance MetaTrace
            [(UTCTime, TraceLabelPeer
                         (ConnectionId RemoteAddress)
                         (BlockFetch.TraceFetchClientState
                            (Header blk)))]
   where
-  namespaceFor _ = Namespace [] ["New","BlockFetch","Client"]
+  namespaceFor _ = Namespace [] ["BlockFetch","Client"]
 
-  severityFor  (Namespace _ ["New","BlockFetch","Client"]) _ = Just Info
-  severityFor _ns _                          =    Nothing
+  severityFor (Namespace _ ["BlockFetch","Client"]) _ = Just Info
+  severityFor _ns                                   _ = Nothing
 
-  documentFor  (Namespace _ ["New","BlockFetch","Client"]) =
-    Just "trace of BlockFetchClient"
+  documentFor  (Namespace _ ["BlockFetch","Client"]) =
+    Just "Digest of the BlockFetch.Client tracer"
   documentFor _ns =
     Nothing
 
-  allNamespaces = [ Namespace [] ["New","BlockFetch","Client"] ]
+  allNamespaces = [ Namespace [] ["BlockFetch","Client"] ]
 
