@@ -274,7 +274,7 @@ executable demo-acceptor
 
 -- BEGIN mtlocal
 executable demo-node-aggregator
-  import:              base, project-config
+  import:              project-config
 
   hs-source-dirs:      demo
 

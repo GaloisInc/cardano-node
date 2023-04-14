@@ -46,6 +46,7 @@ import qualified Cardano.Node.Tracing.StateRep as SR
 import           "contra-tracer" Control.Tracer (Tracer (..))
 import qualified "contra-tracer" Control.Tracer
 
+import           Ouroboros.Consensus.Block(Header)
 import           Ouroboros.Consensus.Ledger.Inspect (LedgerEvent)
 import           Ouroboros.Consensus.MiniProtocol.ChainSync.Client (TraceChainSyncClientEvent)
 import qualified Ouroboros.Consensus.Network.NodeToClient as NodeToClient
@@ -321,12 +322,9 @@ mkConsensusTracers configReflection trBase trForward mbTrEKG trDataPoint trConfi
                 ["Consensus", "Startup"]
     configureTracers configReflection trConfig [consensusStartupErrorTr]
 
-    chainSyncClientDigest <- mkDataPointTracer
-                trDataPoint
-                (const ["New","ChainSync","Client"])
-    let docChainSyncClientDigest = Documented [] -- FIXME: TODO enter and copy
-    configureTracers trConfig docChainSyncClientDigest
-                     [chainSyncClientDigest]
+    chainSyncClientDigest <- mkDataPointTracer trDataPoint
+                -- (const ["New","ChainSync","Client"]) -- FIXME!
+    configureTracers configReflection trConfig [chainSyncClientDigest]
 
     chainSyncClientDP <-
        Control.Tracer.traceWith <$>
@@ -714,3 +712,50 @@ mkDigestTracer period max' tr = do
     -- FIXME[E2]: encode time with CBOR/?
     
     
+
+{-
+instance MetaTrace a => MetaTrace [(UTCTime,a)] where
+  nameSpaceFor = undefined
+  severityFor = undefined
+  documentFor = undefined
+  allNamespaces = undefined
+-}
+
+-- FIXME: the right way??
+instance MetaTrace
+           [(UTCTime, TraceLabelPeer (ConnectionId RemoteAddress)
+                                     (TraceChainSyncClientEvent blk))]
+  where
+  namespaceFor _ = Namespace [] ["New","ChainSync","Client"]
+
+  severityFor  (Namespace _ ["New","ChainSync","Client"]) _ = Just Info
+  severityFor _ns _                          =    Nothing
+
+    -- datapoint should ignore.
+  
+  documentFor  (Namespace _ ["New","ChainSync","Client"]) =
+    Just "trace of ChainSyncClient"
+  documentFor _ns =
+    Nothing
+
+  allNamespaces = [ Namespace [] ["New","ChainSync","Client"]]
+
+-- FIXME: the right way?
+instance MetaTrace
+           [(UTCTime, TraceLabelPeer
+                        (ConnectionId RemoteAddress)
+                        (BlockFetch.TraceFetchClientState
+                           (Header blk)))]
+  where
+  namespaceFor _ = Namespace [] ["New","BlockFetch","Client"]
+
+  severityFor  (Namespace _ ["New","BlockFetch","Client"]) _ = Just Info
+  severityFor _ns _                          =    Nothing
+
+  documentFor  (Namespace _ ["New","BlockFetch","Client"]) =
+    Just "trace of BlockFetchClient"
+  documentFor _ns =
+    Nothing
+
+  allNamespaces = [ Namespace [] ["New","BlockFetch","Client"] ]
+

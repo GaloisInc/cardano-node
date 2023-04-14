@@ -34,6 +34,7 @@ import           Cardano.Tracer.MetaTrace
 import           Cardano.Tracer.Types
 import           Cardano.Tracer.Utils
 import           Trace.Forward.Utils.DataPoint
+import           Trace.Forward.Protocol.DataPoint.Type
 
 data AcceptorsMode = Initiator | Responder
 
