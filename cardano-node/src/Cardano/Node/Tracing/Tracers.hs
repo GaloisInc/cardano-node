@@ -8,6 +8,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module Cardano.Node.Tracing.Tracers
   ( mkDispatchTracers
   ) where
@@ -184,7 +186,6 @@ mkDispatchTracers nodeKernel trBase trForward mbTrEKG trDataPoint trConfig enabl
       , resourcesTracer = Tracer (traceWith resourcesTr)
       , peersTracer     = Tracer (traceWith peersTr)
                           <> Tracer (traceNodePeers nodePeersDP)
-                                -- NOTE[SK]: transforming tracer.
     }
 
 mkConsensusTracers :: forall blk.
@@ -235,13 +236,9 @@ mkConsensusTracers configReflection trBase trForward mbTrEKG trDataPoint trConfi
                 ["BlockFetch", "Client"]
     configureTracers configReflection trConfig [blockFetchClientTr]
 
-    -- FIXME:MT: new semantics here:
     blockFetchClientDigest <- mkDataPointTracer trDataPoint
-                              -- (const ["New","BlockFetch","Client"])
     configureTracers configReflection trConfig [blockFetchClientDigest]
 
-    -- NOTE[MT]: Helps:
-    -- :: Trace (IO TraceLabelPeer _ (B*.TraceFetchClientState ...)
     blockFetchClientDP <-
        Control.Tracer.traceWith <$>
          mkDigestTracer 30 50
@@ -712,7 +709,6 @@ mkDigestTracer period max' tr = do
     -- FIXME[E2]: encode time with CBOR/?
     
     
-
 -- FIXME: a more elegant way to 'name' this datapoint?
 instance MetaTrace
            [(UTCTime, TraceLabelPeer (ConnectionId RemoteAddress)
@@ -723,8 +719,6 @@ instance MetaTrace
   severityFor (Namespace _ ["ChainSync","Client"]) _ = Just Info
   severityFor _ns                                  _ = Nothing
 
-    -- NOTE[MT]: datapoint should ignore.
-  
   documentFor  (Namespace _ ["ChainSync","Client"]) =
     Just "Digest of the ChainSync.Client tracer"
   documentFor _ns =
