@@ -37,6 +37,7 @@ import           Trace.Forward.Protocol.DataPoint.Type
 
 data AcceptorsMode = Initiator | Responder
 
+
 launchAcceptorsSimple
   :: AcceptorsMode
   -> Pico
@@ -114,7 +115,8 @@ launchAcceptorsSimple mode ekgFreq localSocks dpGroups = do
       ]
  where
 
----- new Datapoint abstractions ------------------------------------
+----------------------------------------------------------------------   
+-- Datapoint abstractions:
 
 type DPName = String
               -- FIXME:
@@ -148,8 +150,9 @@ dpTypes = M.fromList
   --       if he/she wants to treat a datapoint as a digest and decode it.
   --       - pro :: one can extract raw digests.
   --       - pro :: problematic if the user gets the "types" wrong.
-  
----- handle datapoints ---------------------------------------------
+
+----------------------------------------------------------------------  
+-- handle datapoints
 
 -- | To be able to ask any 'DataPoint' by the name without knowing the
 --   actual type, we print it out as a raw 'ByteString'.

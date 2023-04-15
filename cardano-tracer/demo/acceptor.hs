@@ -1,87 +1,110 @@
-{-# LANGUAGE LambdaCase #-}
+{-# OPTIONS_GHC -Wno-partial-fields  #-}
 
-import Control.Arrow (first)
-import Control.Monad (unless,when)
 import Data.Fixed (Pico)
-import System.Environment (getArgs)
-import System.Exit (exitFailure)
+import System.Time.Extra (Seconds)
+
+import Options.Applicative
 
 import Cardano.Tracer.Test.Acceptor
 
--- FIXME:
---  - Merge main' and main
---  - improve CL processing.
-main' :: IO ()
-main' = do
-  as <- getArgs
-  localSock:ir:as' <- if length as >= 3 then
-                        return as
-                      else
-                        usageFail "not enough arguments"
-  ir' <- case ir of 
-           "Initiator" -> return Initiator
-           "Responder" -> return Responder
-           _           -> usageFail ""
 
-  dps' <- processDPs as'
+{----------------------------------------------------------------------------
+  Types for Command Line Processing
+----------------------------------------------------------------------------}
+
+-- | A set of datapoints which we poll at the same period.
+data DPGroup = DPG { dpg_period :: Seconds
+                   , dpg_names  :: [String]
+                   }
+  deriving (Eq,Ord,Read,Show)
+               
+data Commands
+  = C_Initiator
+    { ekg_period   :: Pico       
+    , localSockets :: [FilePath]  -- ^ we can initiate to many sockets (servers)
+    , dpgroups     :: [DPGroup]
+    } 
+  | C_Responder 
+    { ekg_period   :: Pico
+    , localSocket  :: FilePath    -- ^ we serve one local socket
+    , dpgroups     :: [DPGroup]
+    } 
+  deriving (Eq,Ord,Read,Show)
+
+{----------------------------------------------------------------------------
+  Parsers
+----------------------------------------------------------------------------}
+
+cmds :: Parser Commands
+cmds = subparser
+  (  command "Initiator"
+       (info initiatorCmd
+         (progDesc "Initiate connections to tracing servers"))
+  <> command "Responder"
+       (info responderCmd
+         (progDesc "Respond to tracing servers"))
+  )
   
-  launchAcceptorsSimple ir' (10/1) [localSock] dps'
+pSocket :: Parser FilePath
+pSocket = strOption (long "socket"
+                     <> short 's'
+                     <> metavar "path"
+                     <> help "path to local socket"
+                    )
+
+pEkgPeriod :: Parser Pico
+pEkgPeriod = option auto (long "ekgperiod"
+                          <> short 'e'
+                          <> metavar "P"
+                          <> value (10/1)
+                          <> showDefault
+                          <> help "Period at which to sample EKG"
+                         )
+
+pPeriod :: Parser Double
+pPeriod = option auto (long "period"
+                       <> short 'p'
+                       <> metavar "P"
+                       <> help "Period to sample datapoints"
+                       )
+
+pDPGroup :: Parser DPGroup
+pDPGroup = DPG <$> pPeriod <*> some pDataPoint
+           -- FIXME: add further help.
+
+pDataPoint :: Parser String
+pDataPoint = argument str (metavar "DP")
+
+initiatorCmd,responderCmd :: Parser Commands
+
+initiatorCmd = C_Initiator
+               <$> pEkgPeriod <*> some pSocket <*> some pDPGroup
+
+responderCmd = C_Responder
+               <$> pEkgPeriod <*> pSocket <*> some pDPGroup
+
+{----------------------------------------------------------------------------
+  Main
+----------------------------------------------------------------------------}
+
 
 main :: IO ()
-main = do
-  as <- getArgs
-  (ekgFreq,as') <- case as of
-                     "-e":ekg:as' -> return (read ekg :: Pico, as')
-                     _            -> return (10/1            , as )
-                     
-  (localSockets,as'') <- parseLocalSockets as'
-  when (null localSockets) $
-    usageFail "no sockets specified"
-  -- TODO: when you merge above, ensure Responder implies length localSockets == 1
-  dps' <- processDPs as''
-  launchAcceptorsSimple Initiator ekgFreq localSockets dps'
-
-
-
-parseLocalSockets :: [String] -> IO ([String],[String])
-parseLocalSockets ("-s":s:xs) = first (s:) <$> parseLocalSockets xs
-parseLocalSockets ["-s"]      = usageFail "-s without path"
-parseLocalSockets xs          = return ([],xs)
-
-
--- | create groups of DPs for multiple periods
-processDPs :: [String] -> IO [(Double, [String])]
-processDPs as' =
+main =
   do
-  dps <- go (addPeriod dfltPeriod []) as'
-  return
-    $ reverse
-    $ filter (\(_,ns)-> not(null ns)) dps
-  where
-  dfltPeriod = 1.0 :: Double
-  
-  go dps = \case
-    []        -> return dps
-    ["-p"]    -> usageFail "-p without 'period' argument"
-    "-p":a:as -> go (addPeriod (read a :: Double) dps) as   -- FIXME
-    a:as      -> go (addDP a dps)                      as
+  c <- execParser opts
+  putStrLn $ ":DEBUG: " ++ show c
 
-  addPeriod p xs      = (p,[]):xs
+  case c of
+    C_Initiator ekgp ss dps ->
+      launchAcceptorsSimple Initiator ekgp ss  (map unDPG dps)
+    C_Responder ekgp s  dps ->
+      launchAcceptorsSimple Responder ekgp [s] (map unDPG dps)
+      
+  where
+  unDPG (DPG x y) = (x,y)
   
-  addDP d ((p,ds):xs) = (p,ds++[d]):xs
-  addDP _ []          = error "impossible"
-  
-  -- FIXME: input sanitization
-  --  - no datapoints
-  --  - `read a`
-  --  - warn if a DP in multiple sets ?
-  
-usageFail :: String -> IO a
-usageFail s = do
-  unless (null s) $
-    do
-    putStr "Error:\n  "
-    putStrLn s
-  putStrLn "Usage: demo-acceptor [-e ekgfreq] [-s /path/to/local/sock]+ [Name.Of.DataPoint | -p seconds]+ "
-  exitFailure
+  opts = info (cmds <**> helper)
+    ( fullDesc
+      <> progDesc "connect (as initiator or responder)"
+      <> header "Client to new-tracing servers" )
 
