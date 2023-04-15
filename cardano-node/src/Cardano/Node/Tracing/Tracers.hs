@@ -715,6 +715,8 @@ mkDigestTracer :: NominalDiffTime
                -> Trace IO ([(UTCTime, a)])
                -> IO (Trace IO a)
 mkDigestTracer period max' tr =
+  do
+  traceWith tr []  -- Want this datapoint to immediately have a value.
   foldMTraceM f [] (contramap unfold tr)
   where
   f as _lc a = do
