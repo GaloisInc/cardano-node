@@ -16,7 +16,6 @@ module Cardano.Node.Tracing.Tracers
 
 import           Codec.CBOR.Read (DeserialiseFailure)
 import           Data.Proxy (Proxy (..))
-import           Data.IORef
 import           Data.Time.Clock (NominalDiffTime, UTCTime, addUTCTime, getCurrentTime)
 
                  
@@ -46,7 +45,6 @@ import           Cardano.Node.Tracing
 import           Cardano.Node.Tracing.Peers
 import qualified Cardano.Node.Tracing.StateRep as SR
 import           "contra-tracer" Control.Tracer (Tracer (..))
-import qualified "contra-tracer" Control.Tracer
 
 import           Ouroboros.Consensus.Block(Header)
 import           Ouroboros.Consensus.Ledger.Inspect (LedgerEvent)
@@ -239,18 +237,7 @@ mkConsensusTracers configReflection trBase trForward mbTrEKG trDataPoint trConfi
     blockFetchClientDigest <- mkDataPointTracer trDataPoint
     configureTracers configReflection trConfig [blockFetchClientDigest]
 
-    blockFetchClientDP <-
-       Control.Tracer.traceWith <$>
-         mkDigestTracer 30 50
-           -- FIXME[F2]: these parameters need tweaking.
-           --  - would like to be able to configure
-           --    - directly
-           --    - or programmatically, e.g. based on configured peer valency.
-           -- FIXME[F2]: reduce/eliminate need for parameters
-           --  - E.g., by allowing an argument to the datapoint fetch, we
-           --    could at least reduce amount of polling by the datapoint
-           --    client.
-           (Tracer $ traceWith blockFetchClientDigest)
+    blockFetchClientDP <- mkDefaultDigestTracer blockFetchClientDigest
     
     -- Special blockFetch client metrics, send directly to EKG
     blockFetchClientMetricsTr <- do
@@ -320,20 +307,14 @@ mkConsensusTracers configReflection trBase trForward mbTrEKG trDataPoint trConfi
     configureTracers configReflection trConfig [consensusStartupErrorTr]
 
     chainSyncClientDigest <- mkDataPointTracer trDataPoint
-                -- (const ["New","ChainSync","Client"]) -- FIXME!
     configureTracers configReflection trConfig [chainSyncClientDigest]
 
-    chainSyncClientDP <-
-       Control.Tracer.traceWith <$>
-         mkDigestTracer 30 50
-           -- MT:FIXME: these parameters need tweaking.
-           --   could we configure?  E.g., based on number of peers.
-           (Tracer $ traceWith chainSyncClientDigest)
+    chainSyncClientDP <- mkDefaultDigestTracer chainSyncClientDigest
   
     pure $ Consensus.Tracers
-      { Consensus.chainSyncClientTracer =
-          Tracer (traceWith chainSyncClientTr)
-          <> Tracer chainSyncClientDP
+      { Consensus.chainSyncClientTracer = Tracer $
+             traceWith chainSyncClientTr
+          <> traceWith chainSyncClientDP
       , Consensus.chainSyncServerHeaderTracer = Tracer $
             traceWith chainSyncServerHeaderTr
            <> traceWith chainSyncServerHeaderMetricsTr
@@ -344,7 +325,7 @@ mkConsensusTracers configReflection trBase trForward mbTrEKG trDataPoint trConfi
       , Consensus.blockFetchClientTracer = Tracer $
           traceWith blockFetchClientTr
           <> traceWith blockFetchClientMetricsTr
-          <> blockFetchClientDP
+          <> traceWith blockFetchClientDP
       , Consensus.blockFetchServerTracer = Tracer $
           traceWith blockFetchServerTr
       , Consensus.forgeStateInfoTracer = Tracer $
@@ -686,29 +667,6 @@ mkDiffusionTracersExtra configReflection trBase trForward mbTrEKG _trDataPoint t
            traceWith dtAcceptPolicyTr
        }
 
----- abstractions over Tracer ------------------------------------------------
--- MT:FIXME: code belongs elsewhere, but where?
--- MT:FIXME: rewrite using a monadic tracing fold!
--- Aha, this is very similar:
---   iohk-monitoring-framework/tracer-transformers/src/Control/Tracer/Transformers.hs
-
--- | mkDigestTracer p mx - trace the values over the last time period 'p'
---   with a maximum of max' values.
-mkDigestTracer :: NominalDiffTime -> Int -> Tracer IO [(UTCTime,a)] -> IO (Tracer IO a)
-mkDigestTracer period max' tr = do
-    qRef <- newIORef []
-    pure $ Tracer $ \a-> do
-      now <- getCurrentTime
-      as <- readIORef qRef
-      let cutoffTime = addUTCTime (negate period) now 
-      let as' = (now,a)
-              : take (max'-1) (takeWhile ((> cutoffTime) . fst) as)
-      writeIORef qRef as'
-      Control.Tracer.traceWith tr as'
-    -- FIXME[E2]: strictness?
-    -- FIXME[E2]: encode time with CBOR/?
-    
-    
 -- FIXME: a more elegant way to 'name' this datapoint?
 instance MetaTrace
            [(UTCTime, TraceLabelPeer (ConnectionId RemoteAddress)
@@ -745,3 +703,36 @@ instance MetaTrace
 
   allNamespaces = [ Namespace [] ["BlockFetch","Client"] ]
 
+
+----------------------------------------------------------------------
+-- Abstraction over Tracer: A Digest creation tracer.
+
+-- | mkDigestTracer p mx - trace the values over the last time period 'p'
+--   with a maximum of max' values.
+
+mkDigestTracer :: NominalDiffTime
+               -> Int
+               -> Trace IO ([(UTCTime, a)])
+               -> IO (Trace IO a)
+mkDigestTracer period max' tr =
+  foldMTraceM f [] (contramap unfold tr)
+  where
+  f as _lc a = do
+      now <- getCurrentTime
+      let cutoffTime = addUTCTime (negate period) now 
+      return $ (now,a)
+             : take (max'-1) (takeWhile ((> cutoffTime) . fst) as)
+
+mkDefaultDigestTracer :: Trace IO ([(UTCTime, a)]) -> IO (Trace IO a)
+mkDefaultDigestTracer = mkDigestTracer digestDefaultTime digestDefaultLen
+
+
+-- FIXME: turn these into configuration parameters.
+-- FIXME: better: have these parameterizable for each digest.
+
+digestDefaultTime :: NominalDiffTime
+digestDefaultTime = 30
+
+digestDefaultLen  :: Int
+digestDefaultLen  = 50
+  
