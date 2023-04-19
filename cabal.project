@@ -97,30 +97,30 @@ source-repository-package
 
 source-repository-package
   type: git
-  location: https://github.com/input-output-hk/ouroboros-network
-  tag: 4341989aff9006b97b8aa171a316140a91e2c277
+  location: https://github.com/GaloisInc/ouroboros-network
+  tag: 1beb1b41b2f72e102b053265e355a0a6ee72bcc0
   subdir:
     ouroboros-consensus-cardano
     ouroboros-consensus-shelley
 
 source-repository-package
   type: git
-  location: https://github.com/input-output-hk/ouroboros-network
-  tag: d9a002347843e88bc725b185d00ba535edb72e29
+  location: https://github.com/GaloisInc/ouroboros-network
+  tag: 4a33afecf0ddadabb9ef4a39ac2fe6c8b2dc7b35
   subdir:
     cardano-ping
 
 source-repository-package
   type: git
   location: https://github.com/GaloisInc/ouroboros-network
-  tag: bd7472a6cfcc7de7e2dc0337c7f865766cf198af
+  tag: a54a897282f051add5a277a00249c91c7f711c85
   subdir:
     ouroboros-consensus-diffusion
 
 source-repository-package
   type: git
-  location: https://github.com/input-output-hk/ouroboros-network
-  tag: ff2d04567b6c19b3a52207809ebd5dcf65528fae
+  location: https://github.com/GaloisInc/ouroboros-network
+  tag: 4a84eff3e301dd964441d5976af6b7053e19d8fc
   subdir:
     cardano-client
     ouroboros-network-api
