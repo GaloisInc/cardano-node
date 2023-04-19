@@ -93,7 +93,7 @@ package snap-server
 source-repository-package
   type: git
   location: https://github.com/GaloisInc/ekg-forward
-  tag: 5cb1dbac35ac07870302511403faf8efb96c56c3
+  tag: 9c58cef6b476cbf6b86e656eb2fc8f96301f4df9
 
 source-repository-package
   type: git
@@ -120,7 +120,7 @@ source-repository-package
 source-repository-package
   type: git
   location: https://github.com/GaloisInc/ouroboros-network
-  tag: 4a84eff3e301dd964441d5976af6b7053e19d8fc
+  tag: 6b8885b81536f8ab520b9309607c53975b841089
   subdir:
     cardano-client
     ouroboros-network-api
@@ -128,8 +128,8 @@ source-repository-package
 
 source-repository-package
   type: git
-  location: https://github.com/input-output-hk/ouroboros-network
-  tag: 7cbd005f532e3256bd0d9a44c268175a5fc2a8ac
+  location: https://github.com/GaloisInc/ouroboros-network
+  tag: 6b8885b81536f8ab520b9309607c53975b841089
   subdir:
     ouroboros-network-protocols
     ouroboros-network
